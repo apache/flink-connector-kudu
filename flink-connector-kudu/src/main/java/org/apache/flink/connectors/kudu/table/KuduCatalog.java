@@ -21,7 +21,6 @@ package org.apache.flink.connectors.kudu.table;
 import org.apache.flink.annotation.PublicEvolving;
 import org.apache.flink.connectors.kudu.connector.KuduTableInfo;
 import org.apache.flink.connectors.kudu.table.utils.KuduTableUtils;
-import org.apache.flink.shaded.guava30.com.google.common.collect.Lists;
 import org.apache.flink.table.api.TableSchema;
 import org.apache.flink.table.catalog.*;
 import org.apache.flink.table.catalog.exceptions.*;
@@ -269,7 +268,7 @@ public class KuduCatalog extends AbstractReadOnlyCatalog {
 
     @Override
     public List<String> listDatabases() throws CatalogException {
-        return Lists.newArrayList(getDefaultDatabase());
+        return Collections.singletonList(getDefaultDatabase());
     }
 
     @Override

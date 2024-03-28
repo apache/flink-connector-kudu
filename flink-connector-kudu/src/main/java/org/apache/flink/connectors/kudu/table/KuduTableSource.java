@@ -23,7 +23,6 @@ import org.apache.flink.connectors.kudu.connector.KuduTableInfo;
 import org.apache.flink.connectors.kudu.connector.convertor.RowResultRowConvertor;
 import org.apache.flink.connectors.kudu.connector.reader.KuduReaderConfig;
 import org.apache.flink.connectors.kudu.format.KuduRowInputFormat;
-import org.apache.flink.shaded.guava30.com.google.common.collect.Lists;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.table.api.DataTypes;
@@ -71,7 +70,7 @@ public class KuduTableSource implements StreamTableSource<Row>,
         }
         this.kuduRowInputFormat = new KuduRowInputFormat(configBuilder.build(), new RowResultRowConvertor(), tableInfo,
                 predicates == null ? Collections.emptyList() : predicates,
-                projectedFields == null ? null : Lists.newArrayList(projectedFields));
+                projectedFields == null ? null : Arrays.asList(projectedFields));
     }
 
     @Override
@@ -84,7 +83,7 @@ public class KuduTableSource implements StreamTableSource<Row>,
         KuduRowInputFormat inputFormat = new KuduRowInputFormat(configBuilder.build(), new RowResultRowConvertor(),
                 tableInfo,
                 predicates == null ? Collections.emptyList() : predicates,
-                projectedFields == null ? null : Lists.newArrayList(projectedFields));
+                projectedFields == null ? null : Arrays.asList(projectedFields));
         return env.createInput(inputFormat,
                         (TypeInformation<Row>) TypeConversions.fromDataTypeToLegacyInfo(getProducedDataType()))
                 .name(explainSource());

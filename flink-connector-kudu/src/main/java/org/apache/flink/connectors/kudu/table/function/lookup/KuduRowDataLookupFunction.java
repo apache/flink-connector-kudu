@@ -28,12 +28,12 @@ import org.apache.flink.connectors.kudu.connector.reader.KuduInputSplit;
 import org.apache.flink.connectors.kudu.connector.reader.KuduReader;
 import org.apache.flink.connectors.kudu.connector.reader.KuduReaderConfig;
 import org.apache.flink.connectors.kudu.connector.reader.KuduReaderIterator;
-import org.apache.flink.shaded.guava30.com.google.common.cache.Cache;
-import org.apache.flink.shaded.guava30.com.google.common.cache.CacheBuilder;
 import org.apache.flink.table.data.GenericRowData;
 import org.apache.flink.table.data.RowData;
 import org.apache.flink.table.functions.FunctionContext;
 import org.apache.flink.table.functions.TableFunction;
+import org.apache.kudu.shaded.com.google.common.cache.Cache;
+import org.apache.kudu.shaded.com.google.common.cache.CacheBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

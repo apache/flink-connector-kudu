@@ -21,7 +21,6 @@ import org.apache.flink.connectors.kudu.connector.ColumnSchemasFactory;
 import org.apache.flink.connectors.kudu.connector.CreateTableOptionsFactory;
 import org.apache.flink.connectors.kudu.connector.KuduFilterInfo;
 import org.apache.flink.connectors.kudu.connector.KuduTableInfo;
-import org.apache.flink.shaded.guava30.com.google.common.collect.Lists;
 import org.apache.flink.table.api.TableSchema;
 import org.apache.flink.table.expressions.CallExpression;
 import org.apache.flink.table.expressions.Expression;
@@ -120,7 +119,7 @@ public class KuduTableUtils {
     }
 
     public static List<String> getHashColumns(Map<String, String> tableProperties) {
-        return Lists.newArrayList(tableProperties.get(KUDU_HASH_COLS.key()).split(","));
+        return Arrays.asList(tableProperties.get(KUDU_HASH_COLS.key()).split(","));
     }
 
 
