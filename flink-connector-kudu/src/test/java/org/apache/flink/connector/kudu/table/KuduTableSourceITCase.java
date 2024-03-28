@@ -23,6 +23,7 @@ import org.apache.flink.table.api.TableEnvironment;
 import org.apache.flink.types.Row;
 import org.apache.flink.util.CloseableIterator;
 
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -36,14 +37,24 @@ public class KuduTableSourceITCase extends KuduTestBase {
     private TableEnvironment tableEnv;
     private KuduCatalog catalog;
 
+    private KuduTableInfo tableInfo = null;
+
     @BeforeEach
-    public void init() {
-        KuduTableInfo tableInfo = booksTableInfo("books", true);
+    void init() {
+        tableInfo = booksTableInfo("books", true);
         setUpDatabase(tableInfo);
         tableEnv = KuduTableTestUtils.createTableEnvWithBlinkPlannerBatchMode();
         catalog = new KuduCatalog(getMasterAddress());
         tableEnv.registerCatalog("kudu", catalog);
         tableEnv.useCatalog("kudu");
+    }
+
+    @AfterEach
+    void cleanup() {
+        if (tableInfo != null) {
+            cleanDatabase(tableInfo);
+            tableInfo = null;
+        }
     }
 
     @Test
@@ -53,7 +64,8 @@ public class KuduTableSourceITCase extends KuduTestBase {
         List<Row> results = new ArrayList<>();
         it.forEachRemaining(results::add);
         assertEquals(5, results.size());
-        assertEquals("1001,Java for dummies,Tan Ah Teck,11.11,11", results.get(0).toString());
+        assertEquals(
+                "+I[1001, Java for dummies, Tan Ah Teck, 11.11, 11]", results.get(0).toString());
         tableEnv.executeSql("DROP TABLE books");
     }
 
@@ -68,7 +80,7 @@ public class KuduTableSourceITCase extends KuduTestBase {
         List<Row> results = new ArrayList<>();
         it.forEachRemaining(results::add);
         assertEquals(1, results.size());
-        assertEquals("More Java for more dummies", results.get(0).toString());
+        assertEquals("+I[More Java for more dummies]", results.get(0).toString());
         tableEnv.executeSql("DROP TABLE books");
     }
 }
