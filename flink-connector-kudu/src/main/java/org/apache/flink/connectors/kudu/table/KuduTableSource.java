@@ -20,7 +20,7 @@ package org.apache.flink.connectors.kudu.table;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.connectors.kudu.connector.KuduFilterInfo;
 import org.apache.flink.connectors.kudu.connector.KuduTableInfo;
-import org.apache.flink.connectors.kudu.connector.convertor.RowResultRowConvertor;
+import org.apache.flink.connectors.kudu.connector.converter.RowResultRowConverter;
 import org.apache.flink.connectors.kudu.connector.reader.KuduReaderConfig;
 import org.apache.flink.connectors.kudu.format.KuduRowInputFormat;
 import org.apache.flink.streaming.api.datastream.DataStream;
@@ -28,22 +28,36 @@ import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.table.api.DataTypes;
 import org.apache.flink.table.api.TableSchema;
 import org.apache.flink.table.expressions.Expression;
-import org.apache.flink.table.sources.*;
+import org.apache.flink.table.sources.FilterableTableSource;
+import org.apache.flink.table.sources.LimitableTableSource;
+import org.apache.flink.table.sources.ProjectableTableSource;
+import org.apache.flink.table.sources.StreamTableSource;
+import org.apache.flink.table.sources.TableSource;
 import org.apache.flink.table.types.DataType;
 import org.apache.flink.table.types.logical.RowType;
 import org.apache.flink.table.types.utils.TypeConversions;
 import org.apache.flink.types.Row;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nullable;
-import java.util.*;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+import java.util.ListIterator;
+import java.util.Optional;
 
 import static org.apache.flink.connectors.kudu.table.utils.KuduTableUtils.toKuduFilterInfo;
 
-public class KuduTableSource implements StreamTableSource<Row>,
-        LimitableTableSource<Row>, ProjectableTableSource<Row>, FilterableTableSource<Row> {
-
+/** DataStream source implementation for Kudu. */
+public class KuduTableSource
+        implements StreamTableSource<Row>,
+                LimitableTableSource<Row>,
+                ProjectableTableSource<Row>,
+                FilterableTableSource<Row> {
 
     private static final Logger LOG = LoggerFactory.getLogger(KuduTableSource.class);
 
@@ -52,14 +66,17 @@ public class KuduTableSource implements StreamTableSource<Row>,
     private final TableSchema flinkSchema;
     private final String[] projectedFields;
     // predicate expression to apply
-    @Nullable
-    private final List<KuduFilterInfo> predicates;
+    @Nullable private final List<KuduFilterInfo> predicates;
     private boolean isFilterPushedDown;
 
     private KuduRowInputFormat kuduRowInputFormat;
 
-    public KuduTableSource(KuduReaderConfig.Builder configBuilder, KuduTableInfo tableInfo,
-                           TableSchema flinkSchema, List<KuduFilterInfo> predicates, String[] projectedFields) {
+    public KuduTableSource(
+            KuduReaderConfig.Builder configBuilder,
+            KuduTableInfo tableInfo,
+            TableSchema flinkSchema,
+            List<KuduFilterInfo> predicates,
+            String[] projectedFields) {
         this.configBuilder = configBuilder;
         this.tableInfo = tableInfo;
         this.flinkSchema = flinkSchema;
@@ -68,9 +85,13 @@ public class KuduTableSource implements StreamTableSource<Row>,
         if (predicates != null && predicates.size() != 0) {
             this.isFilterPushedDown = true;
         }
-        this.kuduRowInputFormat = new KuduRowInputFormat(configBuilder.build(), new RowResultRowConvertor(), tableInfo,
-                predicates == null ? Collections.emptyList() : predicates,
-                projectedFields == null ? null : Arrays.asList(projectedFields));
+        this.kuduRowInputFormat =
+                new KuduRowInputFormat(
+                        configBuilder.build(),
+                        new RowResultRowConverter(),
+                        tableInfo,
+                        predicates == null ? Collections.emptyList() : predicates,
+                        projectedFields == null ? null : Arrays.asList(projectedFields));
     }
 
     @Override
@@ -80,12 +101,17 @@ public class KuduTableSource implements StreamTableSource<Row>,
 
     @Override
     public DataStream<Row> getDataStream(StreamExecutionEnvironment env) {
-        KuduRowInputFormat inputFormat = new KuduRowInputFormat(configBuilder.build(), new RowResultRowConvertor(),
-                tableInfo,
-                predicates == null ? Collections.emptyList() : predicates,
-                projectedFields == null ? null : Arrays.asList(projectedFields));
-        return env.createInput(inputFormat,
-                        (TypeInformation<Row>) TypeConversions.fromDataTypeToLegacyInfo(getProducedDataType()))
+        KuduRowInputFormat inputFormat =
+                new KuduRowInputFormat(
+                        configBuilder.build(),
+                        new RowResultRowConverter(),
+                        tableInfo,
+                        predicates == null ? Collections.emptyList() : predicates,
+                        projectedFields == null ? null : Arrays.asList(projectedFields));
+        return env.createInput(
+                        inputFormat,
+                        (TypeInformation<Row>)
+                                TypeConversions.fromDataTypeToLegacyInfo(getProducedDataType()))
                 .name(explainSource());
     }
 
@@ -107,13 +133,9 @@ public class KuduTableSource implements StreamTableSource<Row>,
             DataTypes.Field[] fields = new DataTypes.Field[projectedFields.length];
             for (int i = 0; i < fields.length; i++) {
                 String fieldName = projectedFields[i];
-                fields[i] = DataTypes.FIELD(
-                        fieldName,
-                        flinkSchema
-                                .getTableColumn(fieldName)
-                                .get()
-                                .getType()
-                );
+                fields[i] =
+                        DataTypes.FIELD(
+                                fieldName, flinkSchema.getTableColumn(fieldName).get().getType());
             }
             return DataTypes.ROW(fields);
         }
@@ -126,8 +148,12 @@ public class KuduTableSource implements StreamTableSource<Row>,
 
     @Override
     public TableSource<Row> applyLimit(long l) {
-        return new KuduTableSource(configBuilder.setRowLimit((int) l), tableInfo, flinkSchema,
-                predicates, projectedFields);
+        return new KuduTableSource(
+                configBuilder.setRowLimit((int) l),
+                tableInfo,
+                flinkSchema,
+                predicates,
+                projectedFields);
     }
 
     @Override
@@ -149,23 +175,33 @@ public class KuduTableSource implements StreamTableSource<Row>,
             Expression predicate = predicatesIter.next();
             Optional<KuduFilterInfo> kuduPred = toKuduFilterInfo(predicate);
             if (kuduPred != null && kuduPred.isPresent()) {
-                LOG.debug("Predicate [{}] converted into KuduFilterInfo and pushed into " +
-                        "KuduTable [{}].", predicate, tableInfo.getName());
+                LOG.debug(
+                        "Predicate [{}] converted into KuduFilterInfo and pushed into "
+                                + "KuduTable [{}].",
+                        predicate,
+                        tableInfo.getName());
                 kuduPredicates.add(kuduPred.get());
                 predicatesIter.remove();
             } else {
-                LOG.debug("Predicate [{}] could not be pushed into KuduFilterInfo for KuduTable [{}].",
-                        predicate, tableInfo.getName());
+                LOG.debug(
+                        "Predicate [{}] could not be pushed into KuduFilterInfo for KuduTable [{}].",
+                        predicate,
+                        tableInfo.getName());
             }
         }
-        return new KuduTableSource(configBuilder, tableInfo, flinkSchema, kuduPredicates, projectedFields);
+        return new KuduTableSource(
+                configBuilder, tableInfo, flinkSchema, kuduPredicates, projectedFields);
     }
 
     @Override
     public String explainSource() {
-        return "KuduTableSource[schema=" + Arrays.toString(getTableSchema().getFieldNames()) +
-                ", filter=" + predicateString() +
-                (projectedFields != null ? ", projectFields=" + Arrays.toString(projectedFields) + "]" : "]");
+        return "KuduTableSource[schema="
+                + Arrays.toString(getTableSchema().getFieldNames())
+                + ", filter="
+                + predicateString()
+                + (projectedFields != null
+                        ? ", projectFields=" + Arrays.toString(projectedFields) + "]"
+                        : "]");
     }
 
     private String predicateString() {

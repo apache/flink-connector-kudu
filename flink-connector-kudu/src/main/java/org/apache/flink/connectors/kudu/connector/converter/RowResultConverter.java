@@ -14,26 +14,28 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.flink.connectors.kudu.connector.convertor;
+
+package org.apache.flink.connectors.kudu.connector.converter;
 
 import org.apache.flink.annotation.Internal;
+
 import org.apache.kudu.client.RowResult;
 
 import java.io.Serializable;
 
 /**
- * The RowResult object of Kudu is converted to correspond to the Flink internal row object
+ * Interface to convert Kudu RowResult objects to internal Flink row representations.
  *
- * @param <T> Kudu rowResult Convertor format
+ * @param <T> Target Flink representation type
  */
 @Internal
-public interface RowResultConvertor<T> extends Serializable {
+public interface RowResultConverter<T> extends Serializable {
 
     /**
-     * Convert Kudu RowResult to the corresponding format
+     * Convert Kudu RowResult to the corresponding format.
      *
      * @param row Kudu RowResult Type
      * @return {@link T}
      */
-    T convertor(RowResult row);
+    T convert(RowResult row);
 }

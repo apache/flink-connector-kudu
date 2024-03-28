@@ -20,8 +20,20 @@ package org.apache.flink.connectors.kudu.table.utils;
 import org.apache.flink.table.api.DataTypes;
 import org.apache.flink.table.types.AtomicDataType;
 import org.apache.flink.table.types.DataType;
-import org.apache.flink.table.types.logical.*;
+import org.apache.flink.table.types.logical.BigIntType;
+import org.apache.flink.table.types.logical.BooleanType;
+import org.apache.flink.table.types.logical.DecimalType;
+import org.apache.flink.table.types.logical.DoubleType;
+import org.apache.flink.table.types.logical.FloatType;
+import org.apache.flink.table.types.logical.IntType;
+import org.apache.flink.table.types.logical.LogicalType;
+import org.apache.flink.table.types.logical.SmallIntType;
+import org.apache.flink.table.types.logical.TimestampType;
+import org.apache.flink.table.types.logical.TinyIntType;
+import org.apache.flink.table.types.logical.VarBinaryType;
+import org.apache.flink.table.types.logical.VarCharType;
 import org.apache.flink.table.types.logical.utils.LogicalTypeDefaultVisitor;
+
 import org.apache.kudu.ColumnTypeAttributes;
 import org.apache.kudu.Type;
 
@@ -29,6 +41,7 @@ import java.sql.Timestamp;
 
 import static org.apache.flink.util.Preconditions.checkNotNull;
 
+/** Kudu type utilities. */
 public class KuduTypeUtils {
 
     public static DataType toFlinkType(Type type, ColumnTypeAttributes typeAttributes) {
@@ -133,8 +146,9 @@ public class KuduTypeUtils {
         @Override
         protected Type defaultMethod(LogicalType logicalType) {
             throw new UnsupportedOperationException(
-                    String.format("Flink doesn't support converting type %s to Kudu type yet.", dataType.toString()));
+                    String.format(
+                            "Flink doesn't support converting type %s to Kudu type yet.",
+                            dataType.toString()));
         }
-
     }
 }

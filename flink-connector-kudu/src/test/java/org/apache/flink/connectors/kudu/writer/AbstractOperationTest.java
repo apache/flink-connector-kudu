@@ -14,32 +14,35 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package org.apache.flink.connectors.kudu.writer;
 
 import org.apache.flink.connectors.kudu.connector.KuduTestBase;
+
 import org.apache.kudu.Schema;
-import org.apache.kudu.client.*;
+import org.apache.kudu.client.Delete;
+import org.apache.kudu.client.Insert;
+import org.apache.kudu.client.KuduTable;
+import org.apache.kudu.client.PartialRow;
+import org.apache.kudu.client.Update;
+import org.apache.kudu.client.Upsert;
 import org.junit.jupiter.api.BeforeEach;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
 import static org.mockito.Mockito.when;
 
+/** Base class for operation tests. */
 public abstract class AbstractOperationTest {
 
-    public static final Schema tableSchema = KuduTestBase.booksTableInfo("test_table", true).getSchema();
-    @Mock
-    Insert mockInsert;
-    @Mock
-    Upsert mockUpsert;
-    @Mock
-    Update mockUpdate;
-    @Mock
-    Delete mockDelete;
-    @Mock
-    KuduTable mockTable;
-    @Mock
-    PartialRow mockPartialRow;
+    public static final Schema TABLE_SCHEMA =
+            KuduTestBase.booksTableInfo("test_table", true).getSchema();
+    @Mock Insert mockInsert;
+    @Mock Upsert mockUpsert;
+    @Mock Update mockUpdate;
+    @Mock Delete mockDelete;
+    @Mock KuduTable mockTable;
+    @Mock PartialRow mockPartialRow;
 
     @BeforeEach
     public void setup() {
@@ -52,6 +55,6 @@ public abstract class AbstractOperationTest {
         when(mockTable.newUpsert()).thenReturn(mockUpsert);
         when(mockTable.newUpdate()).thenReturn(mockUpdate);
         when(mockTable.newDelete()).thenReturn(mockDelete);
-        when(mockTable.getSchema()).thenReturn(tableSchema);
+        when(mockTable.getSchema()).thenReturn(TABLE_SCHEMA);
     }
 }

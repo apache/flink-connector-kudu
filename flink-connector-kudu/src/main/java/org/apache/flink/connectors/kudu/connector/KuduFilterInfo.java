@@ -14,10 +14,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package org.apache.flink.connectors.kudu.connector;
 
 import org.apache.flink.annotation.PublicEvolving;
 import org.apache.flink.table.data.binary.BinaryStringData;
+
 import org.apache.kudu.ColumnSchema;
 import org.apache.kudu.Schema;
 import org.apache.kudu.client.KuduPredicate;
@@ -25,6 +27,7 @@ import org.apache.kudu.client.KuduPredicate;
 import java.io.Serializable;
 import java.util.List;
 
+/** Helper class that groups necessary data to define a Kudu column filter. */
 @PublicEvolving
 public class KuduFilterInfo implements Serializable {
 
@@ -32,7 +35,7 @@ public class KuduFilterInfo implements Serializable {
     private FilterType type;
     private Object value;
 
-    private KuduFilterInfo() { }
+    private KuduFilterInfo() {}
 
     public KuduPredicate toPredicate(Schema schema) {
         return toPredicate(schema.getColumn(this.column));
@@ -65,36 +68,54 @@ public class KuduFilterInfo implements Serializable {
 
         switch (column.getType()) {
             case STRING:
-                predicate = KuduPredicate.newComparisonPredicate(column, comparison,
-                        (this.value instanceof BinaryStringData) ? this.value.toString() : (String) this.value);
+                predicate =
+                        KuduPredicate.newComparisonPredicate(
+                                column,
+                                comparison,
+                                (this.value instanceof BinaryStringData)
+                                        ? this.value.toString()
+                                        : (String) this.value);
                 break;
             case FLOAT:
-                predicate = KuduPredicate.newComparisonPredicate(column, comparison, (float) this.value);
+                predicate =
+                        KuduPredicate.newComparisonPredicate(
+                                column, comparison, (float) this.value);
                 break;
             case INT8:
-                predicate = KuduPredicate.newComparisonPredicate(column, comparison, (byte) this.value);
+                predicate =
+                        KuduPredicate.newComparisonPredicate(column, comparison, (byte) this.value);
                 break;
             case INT16:
-                predicate = KuduPredicate.newComparisonPredicate(column, comparison, (short) this.value);
+                predicate =
+                        KuduPredicate.newComparisonPredicate(
+                                column, comparison, (short) this.value);
                 break;
             case INT32:
-                predicate = KuduPredicate.newComparisonPredicate(column, comparison, (int) this.value);
+                predicate =
+                        KuduPredicate.newComparisonPredicate(column, comparison, (int) this.value);
                 break;
             case INT64:
-                predicate = KuduPredicate.newComparisonPredicate(column, comparison, (long) this.value);
+                predicate =
+                        KuduPredicate.newComparisonPredicate(column, comparison, (long) this.value);
                 break;
             case DOUBLE:
-                predicate = KuduPredicate.newComparisonPredicate(column, comparison, (double) this.value);
+                predicate =
+                        KuduPredicate.newComparisonPredicate(
+                                column, comparison, (double) this.value);
                 break;
             case BOOL:
-                predicate = KuduPredicate.newComparisonPredicate(column, comparison, (boolean) this.value);
+                predicate =
+                        KuduPredicate.newComparisonPredicate(
+                                column, comparison, (boolean) this.value);
                 break;
             case UNIXTIME_MICROS:
                 Long time = (Long) this.value;
                 predicate = KuduPredicate.newComparisonPredicate(column, comparison, time * 1000);
                 break;
             case BINARY:
-                predicate = KuduPredicate.newComparisonPredicate(column, comparison, (byte[]) this.value);
+                predicate =
+                        KuduPredicate.newComparisonPredicate(
+                                column, comparison, (byte[]) this.value);
                 break;
             default:
                 throw new IllegalArgumentException("Illegal var type: " + column.getType());
@@ -102,6 +123,7 @@ public class KuduFilterInfo implements Serializable {
         return predicate;
     }
 
+    /** Possible filter types and their appropriate Kudu comparison operator. */
     public enum FilterType {
         GREATER(KuduPredicate.ComparisonOp.GREATER),
         GREATER_EQUAL(KuduPredicate.ComparisonOp.GREATER_EQUAL),
@@ -117,11 +139,11 @@ public class KuduFilterInfo implements Serializable {
         FilterType(KuduPredicate.ComparisonOp comparator) {
             this.comparator = comparator;
         }
-
     }
 
+    /** KuduFilterInfo builder. */
     public static class Builder {
-        private KuduFilterInfo filter;
+        private final KuduFilterInfo filter;
 
         private Builder(String column) {
             this.filter = new KuduFilterInfo();
@@ -174,5 +196,4 @@ public class KuduFilterInfo implements Serializable {
             return filter;
         }
     }
-
 }

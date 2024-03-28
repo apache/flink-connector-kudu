@@ -14,9 +14,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package org.apache.flink.connectors.kudu.connector.failure;
 
 import org.apache.flink.annotation.PublicEvolving;
+
 import org.apache.kudu.client.RowError;
 
 import java.io.IOException;
@@ -24,17 +26,18 @@ import java.io.Serializable;
 import java.util.List;
 
 /**
- * Custom handling logic for errors resulting from trying to execute Kudu operations in the
- * {@link org.apache.flink.connectors.kudu.connector.writer.KuduWriter}
+ * Custom handling logic for errors resulting from trying to execute Kudu operations in the {@link
+ * org.apache.flink.connectors.kudu.connector.writer.KuduWriter}.
  */
 @PublicEvolving
 public interface KuduFailureHandler extends Serializable {
 
     /**
-     * Handle a failed {@link List<RowError>}.
+     * Handle a failure.
      *
      * @param failure the cause of failure
-     * @throws IOException if the sink should fail on this failure, the implementation should rethrow the throwable or a custom one
+     * @throws IOException if the sink should fail on this failure, the implementation should
+     *     rethrow the throwable or a custom one
      */
     void onFailure(List<RowError> failure) throws IOException;
 

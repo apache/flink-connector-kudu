@@ -14,23 +14,27 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package org.apache.flink.connectors.kudu.connector;
 
-import org.apache.commons.lang3.Validate;
 import org.apache.flink.annotation.PublicEvolving;
+
 import org.apache.kudu.Schema;
 import org.apache.kudu.client.CreateTableOptions;
 
 import java.io.Serializable;
 import java.util.Objects;
 
+import static org.apache.flink.util.Preconditions.checkNotNull;
+
 /**
- * Describes which table should be used in sources and sinks along with specifications
- * on how to create it if it does not exist.
+ * Describes which table should be used in sources and sinks along with specifications on how to
+ * create it if it does not exist.
  *
- * <p> For sources and sinks reading from already existing tables, simply use @{@link KuduTableInfo#forTable(String)}
- * and if you want the system to create the table if it does not exist you need to specify the column and options
- * factories through {@link KuduTableInfo#createTableIfNotExists}
+ * <p>For sources and sinks reading from already existing tables, simply use @{@link
+ * KuduTableInfo#forTable(String)} and if you want the system to create the table if it does not
+ * exist you need to specify the column and options factories through {@link
+ * KuduTableInfo#createTableIfNotExists}
  */
 @PublicEvolving
 public class KuduTableInfo implements Serializable {
@@ -40,12 +44,12 @@ public class KuduTableInfo implements Serializable {
     private ColumnSchemasFactory schemasFactory = null;
 
     private KuduTableInfo(String name) {
-        this.name = Validate.notNull(name);
+        this.name = checkNotNull(name);
     }
 
     /**
-     * Creates a new {@link KuduTableInfo} that is sufficient for reading/writing to existing Kudu Tables.
-     * For creating new tables call {@link #createTableIfNotExists} afterwards.
+     * Creates a new {@link KuduTableInfo} that is sufficient for reading/writing to existing Kudu
+     * Tables. For creating new tables call {@link #createTableIfNotExists} afterward.
      *
      * @param name Table name in Kudu
      * @return KuduTableInfo for the given table name
@@ -55,51 +59,51 @@ public class KuduTableInfo implements Serializable {
     }
 
     /**
-     * Defines table parameters to be used when creating the Kudu table if it does not exist (read or write)
+     * Defines table parameters to be used when creating the Kudu table if it does not exist (read
+     * or write).
      *
-     * @param schemasFactory            factory for defining columns
+     * @param schemasFactory factory for defining columns
      * @param createTableOptionsFactory factory for defining create table options
      * @return KuduTableInfo that will create tables that does not exist with the given settings.
      */
-    public KuduTableInfo createTableIfNotExists(ColumnSchemasFactory schemasFactory, CreateTableOptionsFactory createTableOptionsFactory) {
-        this.createTableOptionsFactory = Validate.notNull(createTableOptionsFactory);
-        this.schemasFactory = Validate.notNull(schemasFactory);
+    public KuduTableInfo createTableIfNotExists(
+            ColumnSchemasFactory schemasFactory,
+            CreateTableOptionsFactory createTableOptionsFactory) {
+        this.createTableOptionsFactory = checkNotNull(createTableOptionsFactory);
+        this.schemasFactory = checkNotNull(schemasFactory);
         return this;
     }
 
     /**
-     * Returns the {@link Schema} of the table. Only works if {@link #createTableIfNotExists} was specified otherwise throws an error.
+     * Returns the {@link Schema} of the table. Only works if {@link #createTableIfNotExists} was
+     * specified otherwise throws an error.
      *
      * @return Schema of the target table.
      */
     public Schema getSchema() {
         if (!getCreateTableIfNotExists()) {
-            throw new RuntimeException("Cannot access schema for KuduTableInfo. Use createTableIfNotExists to specify the columns.");
+            throw new RuntimeException(
+                    "Cannot access schema for KuduTableInfo. Use createTableIfNotExists to specify the columns.");
         }
 
         return new Schema(schemasFactory.getColumnSchemas());
     }
 
-    /**
-     * @return Name of the table.
-     */
+    /** @return Name of the table. */
     public String getName() {
         return name;
     }
 
-    /**
-     * @return True if table creation is enabled if target table does not exist.
-     */
+    /** @return True if table creation is enabled if target table does not exist. */
     public boolean getCreateTableIfNotExists() {
         return createTableOptionsFactory != null;
     }
 
-    /**
-     * @return CreateTableOptions if {@link #createTableIfNotExists} was specified.
-     */
+    /** @return CreateTableOptions if {@link #createTableIfNotExists} was specified. */
     public CreateTableOptions getCreateTableOptions() {
         if (!getCreateTableIfNotExists()) {
-            throw new RuntimeException("Cannot access CreateTableOptions for KuduTableInfo. Use createTableIfNotExists to specify.");
+            throw new RuntimeException(
+                    "Cannot access CreateTableOptions for KuduTableInfo. Use createTableIfNotExists to specify.");
         }
         return createTableOptionsFactory.getCreateTableOptions();
     }

@@ -15,11 +15,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package org.apache.flink.connectors.kudu.table.function.lookup;
 
-/**
- * Options for the Kudu lookup.
- */
+/** Options for the Kudu lookup. */
 public class KuduLookupOptions {
     private final long cacheMaxSize;
     private final long cacheExpireMs;
@@ -39,17 +38,15 @@ public class KuduLookupOptions {
         return cacheMaxSize;
     }
 
-
     public long getCacheExpireMs() {
         return cacheExpireMs;
     }
-
 
     public int getMaxRetryTimes() {
         return maxRetryTimes;
     }
 
-
+    /** Builder for KuduLookupOptions. */
     public static final class Builder {
         private long cacheMaxSize;
         private long cacheExpireMs;

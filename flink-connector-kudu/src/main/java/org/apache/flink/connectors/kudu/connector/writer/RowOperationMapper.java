@@ -14,11 +14,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package org.apache.flink.connectors.kudu.connector.writer;
 
 import org.apache.flink.annotation.PublicEvolving;
 import org.apache.flink.types.Row;
 
+/** Logic to map Flink Row to a "Kudu upsert"-compatible format. */
 @PublicEvolving
 public class RowOperationMapper extends AbstractSingleOperationMapper<Row> {
 

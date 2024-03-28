@@ -15,15 +15,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package org.apache.flink.connectors.kudu.table.function.lookup;
 
-import org.apache.commons.collections.CollectionUtils;
-import org.apache.commons.compress.utils.Lists;
-import org.apache.commons.lang3.ArrayUtils;
 import org.apache.flink.connectors.kudu.connector.KuduFilterInfo;
 import org.apache.flink.connectors.kudu.connector.KuduTableInfo;
-import org.apache.flink.connectors.kudu.connector.convertor.RowResultConvertor;
-import org.apache.flink.connectors.kudu.connector.convertor.RowResultRowDataConvertor;
+import org.apache.flink.connectors.kudu.connector.converter.RowResultConverter;
+import org.apache.flink.connectors.kudu.connector.converter.RowResultRowDataConverter;
 import org.apache.flink.connectors.kudu.connector.reader.KuduInputSplit;
 import org.apache.flink.connectors.kudu.connector.reader.KuduReader;
 import org.apache.flink.connectors.kudu.connector.reader.KuduReaderConfig;
@@ -32,6 +30,10 @@ import org.apache.flink.table.data.GenericRowData;
 import org.apache.flink.table.data.RowData;
 import org.apache.flink.table.functions.FunctionContext;
 import org.apache.flink.table.functions.TableFunction;
+
+import org.apache.commons.collections.CollectionUtils;
+import org.apache.commons.compress.utils.Lists;
+import org.apache.commons.lang3.ArrayUtils;
 import org.apache.kudu.shaded.com.google.common.cache.Cache;
 import org.apache.kudu.shaded.com.google.common.cache.CacheBuilder;
 import org.slf4j.Logger;
@@ -43,9 +45,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
-/**
- * LookupFunction based on the RowData object type
- */
+/** LookupFunction based on the RowData object type. */
 public class KuduRowDataLookupFunction extends TableFunction<RowData> {
     private static final long serialVersionUID = 1L;
     private static final Logger LOG = LoggerFactory.getLogger(KuduRowDataLookupFunction.class);
@@ -57,15 +57,19 @@ public class KuduRowDataLookupFunction extends TableFunction<RowData> {
     private final long cacheMaxSize;
     private final long cacheExpireMs;
     private final int maxRetryTimes;
-    private final RowResultConvertor<RowData> convertor;
+    private final RowResultConverter<RowData> convertor;
 
     private transient Cache<RowData, List<RowData>> cache;
     private transient KuduReader<RowData> kuduReader;
 
-    private KuduRowDataLookupFunction(String[] keyNames, KuduTableInfo tableInfo, KuduReaderConfig kuduReaderConfig,
-                                      String[] projectedFields, KuduLookupOptions kuduLookupOptions) {
+    private KuduRowDataLookupFunction(
+            String[] keyNames,
+            KuduTableInfo tableInfo,
+            KuduReaderConfig kuduReaderConfig,
+            String[] projectedFields,
+            KuduLookupOptions kuduLookupOptions) {
         this.tableInfo = tableInfo;
-        this.convertor = new RowResultRowDataConvertor();
+        this.convertor = new RowResultRowDataConverter();
         this.projectedFields = projectedFields;
         this.keyNames = keyNames;
         this.kuduReaderConfig = kuduReaderConfig;
@@ -106,7 +110,8 @@ public class KuduRowDataLookupFunction extends TableFunction<RowData> {
                 KuduInputSplit[] inputSplits = kuduReader.createInputSplits(1);
                 ArrayList<RowData> rows = new ArrayList<>();
                 for (KuduInputSplit inputSplit : inputSplits) {
-                    KuduReaderIterator<RowData> scanner = kuduReader.scanner(inputSplit.getScanToken());
+                    KuduReaderIterator<RowData> scanner =
+                            kuduReader.scanner(inputSplit.getScanToken());
                     // not use cache
                     if (cache == null) {
                         while (scanner.hasNext()) {
@@ -139,34 +144,32 @@ public class KuduRowDataLookupFunction extends TableFunction<RowData> {
         }
     }
 
-    /**
-     * build kuduFilterInfo
-     *
-     * @return kudu filters
-     */
     private List<KuduFilterInfo> buildKuduFilterInfo(Object... keyValS) {
         List<KuduFilterInfo> kuduFilterInfos = Lists.newArrayList();
         for (int i = 0; i < keyNames.length; i++) {
-            KuduFilterInfo kuduFilterInfo = KuduFilterInfo.Builder.create(keyNames[i])
-                    .equalTo(keyValS[i]).build();
+            KuduFilterInfo kuduFilterInfo =
+                    KuduFilterInfo.Builder.create(keyNames[i]).equalTo(keyValS[i]).build();
             kuduFilterInfos.add(kuduFilterInfo);
         }
         return kuduFilterInfos;
     }
 
-
     @Override
     public void open(FunctionContext context) {
         try {
             super.open(context);
-            this.kuduReader = new KuduReader<>(this.tableInfo, this.kuduReaderConfig, this.convertor);
+            this.kuduReader =
+                    new KuduReader<>(this.tableInfo, this.kuduReaderConfig, this.convertor);
             // build kudu cache
-            this.kuduReader.setTableProjections(ArrayUtils.isNotEmpty(projectedFields) ?
-                    Arrays.asList(projectedFields) : null);
-            this.cache = this.cacheMaxSize == -1 || this.cacheExpireMs == -1 ? null : CacheBuilder.newBuilder()
-                    .expireAfterWrite(this.cacheExpireMs, TimeUnit.MILLISECONDS)
-                    .maximumSize(this.cacheMaxSize)
-                    .build();
+            this.kuduReader.setTableProjections(
+                    ArrayUtils.isNotEmpty(projectedFields) ? Arrays.asList(projectedFields) : null);
+            this.cache =
+                    this.cacheMaxSize == -1 || this.cacheExpireMs == -1
+                            ? null
+                            : CacheBuilder.newBuilder()
+                                    .expireAfterWrite(this.cacheExpireMs, TimeUnit.MILLISECONDS)
+                                    .maximumSize(this.cacheMaxSize)
+                                    .build();
         } catch (Exception ioe) {
             LOG.error("Exception while creating connection to Kudu.", ioe);
             throw new RuntimeException("Cannot create connection to Kudu.", ioe);
@@ -191,6 +194,7 @@ public class KuduRowDataLookupFunction extends TableFunction<RowData> {
         }
     }
 
+    /** Builder for KuduRowDataLookupFunction. */
     public static class Builder {
         private KuduTableInfo tableInfo;
         private KuduReaderConfig kuduReaderConfig;
@@ -228,8 +232,8 @@ public class KuduRowDataLookupFunction extends TableFunction<RowData> {
         }
 
         public KuduRowDataLookupFunction build() {
-            return new KuduRowDataLookupFunction(keyNames, tableInfo, kuduReaderConfig, projectedFields,
-                    kuduLookupOptions);
+            return new KuduRowDataLookupFunction(
+                    keyNames, tableInfo, kuduReaderConfig, projectedFields, kuduLookupOptions);
         }
     }
 }

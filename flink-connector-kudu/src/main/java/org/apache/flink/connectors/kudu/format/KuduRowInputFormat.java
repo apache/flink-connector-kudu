@@ -14,38 +14,45 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package org.apache.flink.connectors.kudu.format;
 
 import org.apache.flink.annotation.PublicEvolving;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.connectors.kudu.connector.KuduFilterInfo;
 import org.apache.flink.connectors.kudu.connector.KuduTableInfo;
-import org.apache.flink.connectors.kudu.connector.convertor.RowResultConvertor;
+import org.apache.flink.connectors.kudu.connector.converter.RowResultConverter;
 import org.apache.flink.connectors.kudu.connector.reader.KuduReaderConfig;
 import org.apache.flink.types.Row;
 
 import java.util.List;
 
-/**
- * InputFormat based on the row object type
- */
+/** InputFormat based on the row object type. */
 @PublicEvolving
 public class KuduRowInputFormat extends AbstractKuduInputFormat<Row> {
 
-    public KuduRowInputFormat(KuduReaderConfig readerConfig, RowResultConvertor<Row> rowResultConvertor,
-                              KuduTableInfo tableInfo) {
-        super(readerConfig, rowResultConvertor, tableInfo);
+    public KuduRowInputFormat(
+            KuduReaderConfig readerConfig,
+            RowResultConverter<Row> rowResultConverter,
+            KuduTableInfo tableInfo) {
+        super(readerConfig, rowResultConverter, tableInfo);
     }
 
-    public KuduRowInputFormat(KuduReaderConfig readerConfig, RowResultConvertor<Row> rowResultConvertor,
-                              KuduTableInfo tableInfo, List<String> tableProjections) {
-        super(readerConfig, rowResultConvertor, tableInfo, tableProjections);
+    public KuduRowInputFormat(
+            KuduReaderConfig readerConfig,
+            RowResultConverter<Row> rowResultConverter,
+            KuduTableInfo tableInfo,
+            List<String> tableProjections) {
+        super(readerConfig, rowResultConverter, tableInfo, tableProjections);
     }
 
-    public KuduRowInputFormat(KuduReaderConfig readerConfig, RowResultConvertor<Row> rowResultConvertor,
-                              KuduTableInfo tableInfo, List<KuduFilterInfo> tableFilters,
-                              List<String> tableProjections) {
-        super(readerConfig, rowResultConvertor, tableInfo, tableFilters, tableProjections);
+    public KuduRowInputFormat(
+            KuduReaderConfig readerConfig,
+            RowResultConverter<Row> rowResultConverter,
+            KuduTableInfo tableInfo,
+            List<KuduFilterInfo> tableFilters,
+            List<String> tableProjections) {
+        super(readerConfig, rowResultConverter, tableInfo, tableFilters, tableProjections);
     }
 
     @Override

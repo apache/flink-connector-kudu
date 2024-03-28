@@ -14,10 +14,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package org.apache.flink.connectors.kudu.connector.reader;
 
 import org.apache.flink.annotation.Internal;
-import org.apache.flink.connectors.kudu.connector.convertor.RowResultConvertor;
+import org.apache.flink.connectors.kudu.connector.converter.RowResultConverter;
+
 import org.apache.kudu.client.KuduException;
 import org.apache.kudu.client.KuduScanner;
 import org.apache.kudu.client.RowResult;
@@ -25,16 +27,18 @@ import org.apache.kudu.client.RowResultIterator;
 
 import java.io.Serializable;
 
+/** An iterator that helps to iterate on Kudu record rows. */
 @Internal
 public class KuduReaderIterator<T> implements Serializable {
 
     private final KuduScanner scanner;
-    private final RowResultConvertor<T> rowResultConvertor;
+    private final RowResultConverter<T> rowResultConverter;
     private RowResultIterator rowIterator;
 
-    public KuduReaderIterator(KuduScanner scanner, RowResultConvertor<T> rowResultConvertor) throws KuduException {
+    public KuduReaderIterator(KuduScanner scanner, RowResultConverter<T> rowResultConverter)
+            throws KuduException {
         this.scanner = scanner;
-        this.rowResultConvertor = rowResultConvertor;
+        this.rowResultConverter = rowResultConverter;
         nextRows();
     }
 
@@ -55,7 +59,7 @@ public class KuduReaderIterator<T> implements Serializable {
 
     public T next() {
         RowResult row = this.rowIterator.next();
-        return rowResultConvertor.convertor(row);
+        return rowResultConverter.convert(row);
     }
 
     private void nextRows() throws KuduException {

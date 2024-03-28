@@ -14,11 +14,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package org.apache.flink.connectors.kudu.connector.writer;
 
 import org.apache.flink.annotation.PublicEvolving;
 import org.apache.flink.api.java.tuple.Tuple;
 
+/** Logic to map a Flink Tuple to a Kudu-compatible format. */
 @PublicEvolving
 public class TupleOperationMapper<T extends Tuple> extends AbstractSingleOperationMapper<T> {
 

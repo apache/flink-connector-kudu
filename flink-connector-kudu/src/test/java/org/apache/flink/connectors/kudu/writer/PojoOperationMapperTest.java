@@ -21,6 +21,7 @@ import org.apache.flink.connectors.kudu.connector.KuduTestBase;
 import org.apache.flink.connectors.kudu.connector.KuduTestBase.BookInfo;
 import org.apache.flink.connectors.kudu.connector.writer.AbstractSingleOperationMapper;
 import org.apache.flink.connectors.kudu.connector.writer.PojoOperationMapper;
+
 import org.apache.kudu.client.Operation;
 import org.apache.kudu.client.PartialRow;
 import org.junit.jupiter.api.Test;
@@ -30,12 +31,17 @@ import java.util.List;
 
 import static org.junit.Assert.assertEquals;
 
+/** Tests for {@link PojoOperationMapper}. */
 public class PojoOperationMapperTest extends AbstractOperationTest {
 
     @Test
     void testPojoMapper() {
 
-        PojoOperationMapper<BookInfo> mapper = new PojoOperationMapper<>(BookInfo.class, KuduTestBase.columns, AbstractSingleOperationMapper.KuduOperation.INSERT);
+        PojoOperationMapper<BookInfo> mapper =
+                new PojoOperationMapper<>(
+                        BookInfo.class,
+                        KuduTestBase.columns,
+                        AbstractSingleOperationMapper.KuduOperation.INSERT);
 
         BookInfo bookInfo = KuduTestBase.booksDataPojo().get(0);
 
@@ -60,7 +66,11 @@ public class PojoOperationMapperTest extends AbstractOperationTest {
 
     @Test
     public void testFieldInheritance() {
-        PojoOperationMapper<Second> mapper = new PojoOperationMapper<>(Second.class, new String[]{"s1", "i1", "i2"}, AbstractSingleOperationMapper.KuduOperation.INSERT);
+        PojoOperationMapper<Second> mapper =
+                new PojoOperationMapper<>(
+                        Second.class,
+                        new String[] {"s1", "i1", "i2"},
+                        AbstractSingleOperationMapper.KuduOperation.INSERT);
         Second s = new Second();
         assertEquals("s1", mapper.getField(s, 0));
         assertEquals(1, mapper.getField(s, 1));

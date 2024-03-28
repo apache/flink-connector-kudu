@@ -14,31 +14,33 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.flink.connectors.kudu.connector.convertor;
+
+package org.apache.flink.connectors.kudu.connector.converter;
 
 import org.apache.flink.annotation.Internal;
 import org.apache.flink.types.Row;
+
 import org.apache.kudu.Schema;
 import org.apache.kudu.client.RowResult;
 
-/**
- * Transform the Kudu RowResult object into a Flink Row object
- */
+/** Transforms a Kudu RowResult object into a Flink Row object. */
 @Internal
-public class RowResultRowConvertor implements RowResultConvertor<Row> {
+public class RowResultRowConverter implements RowResultConverter<Row> {
     @Override
-    public Row convertor(RowResult row) {
+    public Row convert(RowResult row) {
         Schema schema = row.getColumnProjection();
 
         Row values = new Row(schema.getColumnCount());
-        schema.getColumns().forEach(column -> {
-            String name = column.getName();
-            int pos = schema.getColumnIndex(name);
-            if (row.isNull(name)) {
-                return;
-            }
-            values.setField(pos, row.getObject(name));
-        });
+        schema.getColumns()
+                .forEach(
+                        column -> {
+                            String name = column.getName();
+                            int pos = schema.getColumnIndex(name);
+                            if (row.isNull(name)) {
+                                return;
+                            }
+                            values.setField(pos, row.getObject(name));
+                        });
         return values;
     }
 }

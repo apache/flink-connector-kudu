@@ -14,6 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package org.apache.flink.connectors.kudu.streaming;
 
 import org.apache.flink.configuration.Configuration;
@@ -24,6 +25,7 @@ import org.apache.flink.connectors.kudu.connector.writer.KuduWriterConfig;
 import org.apache.flink.connectors.kudu.connector.writer.RowOperationMapper;
 import org.apache.flink.streaming.api.operators.StreamingRuntimeContext;
 import org.apache.flink.types.Row;
+
 import org.apache.kudu.ColumnSchema;
 import org.apache.kudu.Type;
 import org.apache.kudu.client.CreateTableOptions;
@@ -38,10 +40,11 @@ import org.slf4j.LoggerFactory;
 import java.util.List;
 import java.util.UUID;
 
+/** Tests for {@link KuduSink}. */
 public class KuduSinkTest extends KuduTestBase {
 
     private static final Logger LOG = LoggerFactory.getLogger(KuduSinkTest.class);
-    private static final String[] columns = new String[]{"id", "uuid"};
+    private static final String[] columns = new String[] {"id", "uuid"};
     private static StreamingRuntimeContext context;
 
     @BeforeAll
@@ -53,22 +56,45 @@ public class KuduSinkTest extends KuduTestBase {
     @Test
     void testInvalidKuduMaster() {
         KuduTableInfo tableInfo = booksTableInfo(UUID.randomUUID().toString(), false);
-        Assertions.assertThrows(NullPointerException.class, () -> new KuduSink<>(null, tableInfo, new RowOperationMapper(columns, AbstractSingleOperationMapper.KuduOperation.INSERT)));
+        Assertions.assertThrows(
+                NullPointerException.class,
+                () ->
+                        new KuduSink<>(
+                                null,
+                                tableInfo,
+                                new RowOperationMapper(
+                                        columns,
+                                        AbstractSingleOperationMapper.KuduOperation.INSERT)));
     }
 
     @Test
     void testInvalidTableInfo() {
         String masterAddresses = getMasterAddress();
-        KuduWriterConfig writerConfig = KuduWriterConfig.Builder.setMasters(masterAddresses).build();
-        Assertions.assertThrows(NullPointerException.class, () -> new KuduSink<>(writerConfig, null, new RowOperationMapper(columns, AbstractSingleOperationMapper.KuduOperation.INSERT)));
+        KuduWriterConfig writerConfig =
+                KuduWriterConfig.Builder.setMasters(masterAddresses).build();
+        Assertions.assertThrows(
+                NullPointerException.class,
+                () ->
+                        new KuduSink<>(
+                                writerConfig,
+                                null,
+                                new RowOperationMapper(
+                                        columns,
+                                        AbstractSingleOperationMapper.KuduOperation.INSERT)));
     }
 
     @Test
     void testNotTableExist() {
         String masterAddresses = getMasterAddress();
         KuduTableInfo tableInfo = booksTableInfo(UUID.randomUUID().toString(), false);
-        KuduWriterConfig writerConfig = KuduWriterConfig.Builder.setMasters(masterAddresses).build();
-        KuduSink<Row> sink = new KuduSink<>(writerConfig, tableInfo, new RowOperationMapper(columns, AbstractSingleOperationMapper.KuduOperation.INSERT));
+        KuduWriterConfig writerConfig =
+                KuduWriterConfig.Builder.setMasters(masterAddresses).build();
+        KuduSink<Row> sink =
+                new KuduSink<>(
+                        writerConfig,
+                        tableInfo,
+                        new RowOperationMapper(
+                                columns, AbstractSingleOperationMapper.KuduOperation.INSERT));
 
         sink.setRuntimeContext(context);
         Assertions.assertThrows(RuntimeException.class, () -> sink.open(new Configuration()));
@@ -79,11 +105,15 @@ public class KuduSinkTest extends KuduTestBase {
         String masterAddresses = getMasterAddress();
 
         KuduTableInfo tableInfo = booksTableInfo(UUID.randomUUID().toString(), true);
-        KuduWriterConfig writerConfig = KuduWriterConfig.Builder
-                .setMasters(masterAddresses)
-                .setStrongConsistency()
-                .build();
-        KuduSink<Row> sink = new KuduSink<>(writerConfig, tableInfo, new RowOperationMapper(KuduTestBase.columns, AbstractSingleOperationMapper.KuduOperation.INSERT));
+        KuduWriterConfig writerConfig =
+                KuduWriterConfig.Builder.setMasters(masterAddresses).setStrongConsistency().build();
+        KuduSink<Row> sink =
+                new KuduSink<>(
+                        writerConfig,
+                        tableInfo,
+                        new RowOperationMapper(
+                                KuduTestBase.columns,
+                                AbstractSingleOperationMapper.KuduOperation.INSERT));
 
         sink.setRuntimeContext(context);
         sink.open(new Configuration());
@@ -103,11 +133,17 @@ public class KuduSinkTest extends KuduTestBase {
         String masterAddresses = getMasterAddress();
 
         KuduTableInfo tableInfo = booksTableInfo(UUID.randomUUID().toString(), true);
-        KuduWriterConfig writerConfig = KuduWriterConfig.Builder
-                .setMasters(masterAddresses)
-                .setEventualConsistency()
-                .build();
-        KuduSink<Row> sink = new KuduSink<>(writerConfig, tableInfo, new RowOperationMapper(KuduTestBase.columns, AbstractSingleOperationMapper.KuduOperation.INSERT));
+        KuduWriterConfig writerConfig =
+                KuduWriterConfig.Builder.setMasters(masterAddresses)
+                        .setEventualConsistency()
+                        .build();
+        KuduSink<Row> sink =
+                new KuduSink<>(
+                        writerConfig,
+                        tableInfo,
+                        new RowOperationMapper(
+                                KuduTestBase.columns,
+                                AbstractSingleOperationMapper.KuduOperation.INSERT));
 
         sink.setRuntimeContext(context);
         sink.open(new Configuration());
@@ -130,28 +166,33 @@ public class KuduSinkTest extends KuduTestBase {
     void testSpeed() throws Exception {
         String masterAddresses = getMasterAddress();
 
-        KuduTableInfo tableInfo = KuduTableInfo
-                .forTable("test_speed")
-                .createTableIfNotExists(
-                        () ->
-                                Lists.newArrayList(
-                                        new ColumnSchema
-                                                .ColumnSchemaBuilder("id", Type.INT32)
-                                                .key(true)
-                                                .build(),
-                                        new ColumnSchema
-                                                .ColumnSchemaBuilder("uuid", Type.STRING)
-                                                .build()
-                                ),
-                        () -> new CreateTableOptions()
-                                .setNumReplicas(3)
-                                .addHashPartitions(Lists.newArrayList("id"), 6));
+        KuduTableInfo tableInfo =
+                KuduTableInfo.forTable("test_speed")
+                        .createTableIfNotExists(
+                                () ->
+                                        Lists.newArrayList(
+                                                new ColumnSchema.ColumnSchemaBuilder(
+                                                                "id", Type.INT32)
+                                                        .key(true)
+                                                        .build(),
+                                                new ColumnSchema.ColumnSchemaBuilder(
+                                                                "uuid", Type.STRING)
+                                                        .build()),
+                                () ->
+                                        new CreateTableOptions()
+                                                .setNumReplicas(3)
+                                                .addHashPartitions(Lists.newArrayList("id"), 6));
 
-        KuduWriterConfig writerConfig = KuduWriterConfig.Builder
-                .setMasters(masterAddresses)
-                .setEventualConsistency()
-                .build();
-        KuduSink<Row> sink = new KuduSink<>(writerConfig, tableInfo, new RowOperationMapper(columns, AbstractSingleOperationMapper.KuduOperation.INSERT));
+        KuduWriterConfig writerConfig =
+                KuduWriterConfig.Builder.setMasters(masterAddresses)
+                        .setEventualConsistency()
+                        .build();
+        KuduSink<Row> sink =
+                new KuduSink<>(
+                        writerConfig,
+                        tableInfo,
+                        new RowOperationMapper(
+                                columns, AbstractSingleOperationMapper.KuduOperation.INSERT));
 
         sink.setRuntimeContext(context);
         sink.open(new Configuration());
@@ -172,5 +213,4 @@ public class KuduSinkTest extends KuduTestBase {
         List<Row> rows = readRows(tableInfo);
         Assertions.assertEquals(totalRecords, rows.size());
     }
-
 }

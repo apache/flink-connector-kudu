@@ -14,21 +14,25 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package org.apache.flink.connectors.kudu.connector.reader;
 
 import org.apache.flink.annotation.Internal;
 import org.apache.flink.core.io.LocatableInputSplit;
 
+/** Kudu input split that holds a scan token to identify the split position. */
 @Internal
 public class KuduInputSplit extends LocatableInputSplit {
 
-    private byte[] scanToken;
+    private static final long serialVersionUID = 1L;
+
+    private final byte[] scanToken;
 
     /**
-     * Creates a new KuduInputSplit
+     * Creates a new KuduInputSplit.
      *
      * @param splitNumber the number of the input split
-     * @param hostnames   The names of the hosts storing the data this input split refers to.
+     * @param hostnames the names of the hosts storing the data this input split refers to
      */
     public KuduInputSplit(byte[] scanToken, final int splitNumber, final String[] hostnames) {
         super(splitNumber, hostnames);

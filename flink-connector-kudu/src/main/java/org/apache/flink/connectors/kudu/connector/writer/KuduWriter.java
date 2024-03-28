@@ -14,6 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package org.apache.flink.connectors.kudu.connector.writer;
 
 import org.apache.flink.annotation.Internal;
@@ -21,7 +22,14 @@ import org.apache.flink.annotation.VisibleForTesting;
 import org.apache.flink.connectors.kudu.connector.KuduTableInfo;
 import org.apache.flink.connectors.kudu.connector.failure.DefaultKuduFailureHandler;
 import org.apache.flink.connectors.kudu.connector.failure.KuduFailureHandler;
-import org.apache.kudu.client.*;
+
+import org.apache.kudu.client.DeleteTableResponse;
+import org.apache.kudu.client.KuduClient;
+import org.apache.kudu.client.KuduSession;
+import org.apache.kudu.client.KuduTable;
+import org.apache.kudu.client.Operation;
+import org.apache.kudu.client.OperationResponse;
+import org.apache.kudu.client.RowError;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -29,6 +37,7 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
 
+/** Writer to write data to a Kudu table. */
 @Internal
 public class KuduWriter<T> implements AutoCloseable {
 
@@ -43,11 +52,20 @@ public class KuduWriter<T> implements AutoCloseable {
     private transient KuduSession session;
     private transient KuduTable table;
 
-    public KuduWriter(KuduTableInfo tableInfo, KuduWriterConfig writerConfig, KuduOperationMapper<T> operationMapper) throws IOException {
+    public KuduWriter(
+            KuduTableInfo tableInfo,
+            KuduWriterConfig writerConfig,
+            KuduOperationMapper<T> operationMapper)
+            throws IOException {
         this(tableInfo, writerConfig, operationMapper, new DefaultKuduFailureHandler());
     }
 
-    public KuduWriter(KuduTableInfo tableInfo, KuduWriterConfig writerConfig, KuduOperationMapper<T> operationMapper, KuduFailureHandler failureHandler) throws IOException {
+    public KuduWriter(
+            KuduTableInfo tableInfo,
+            KuduWriterConfig writerConfig,
+            KuduOperationMapper<T> operationMapper,
+            KuduFailureHandler failureHandler)
+            throws IOException {
         this.tableInfo = tableInfo;
         this.writerConfig = writerConfig;
         this.failureHandler = failureHandler;
@@ -79,7 +97,8 @@ public class KuduWriter<T> implements AutoCloseable {
             return client.openTable(tableName);
         }
         if (tableInfo.getCreateTableIfNotExists()) {
-            return client.createTable(tableName, tableInfo.getSchema(), tableInfo.getCreateTableOptions());
+            return client.createTable(
+                    tableName, tableInfo.getSchema(), tableInfo.getCreateTableOptions());
         }
         throw new RuntimeException("Table " + tableName + " does not exist.");
     }
@@ -139,7 +158,9 @@ public class KuduWriter<T> implements AutoCloseable {
     }
 
     private void checkAsyncErrors() throws IOException {
-        if (session.countPendingErrors() == 0) { return; }
+        if (session.countPendingErrors() == 0) {
+            return;
+        }
 
         List<RowError> errors = Arrays.asList(session.getPendingErrors().getRowErrors());
         failureHandler.onFailure(errors);
