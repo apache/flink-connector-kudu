@@ -14,6 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package org.apache.flink.connectors.kudu.table;
 
 import org.apache.flink.api.java.tuple.Tuple2;
@@ -30,15 +31,37 @@ import org.apache.flink.table.factories.TableSinkFactory;
 import org.apache.flink.table.factories.TableSourceFactory;
 import org.apache.flink.types.Row;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 
 import static org.apache.flink.table.descriptors.ConnectorDescriptorValidator.CONNECTOR_TYPE;
-import static org.apache.flink.table.descriptors.DescriptorProperties.*;
-import static org.apache.flink.table.descriptors.Rowtime.*;
-import static org.apache.flink.table.descriptors.Schema.*;
+import static org.apache.flink.table.descriptors.DescriptorProperties.EXPR;
+import static org.apache.flink.table.descriptors.DescriptorProperties.WATERMARK;
+import static org.apache.flink.table.descriptors.DescriptorProperties.WATERMARK_ROWTIME;
+import static org.apache.flink.table.descriptors.DescriptorProperties.WATERMARK_STRATEGY_DATA_TYPE;
+import static org.apache.flink.table.descriptors.DescriptorProperties.WATERMARK_STRATEGY_EXPR;
+import static org.apache.flink.table.descriptors.Rowtime.ROWTIME_TIMESTAMPS_CLASS;
+import static org.apache.flink.table.descriptors.Rowtime.ROWTIME_TIMESTAMPS_FROM;
+import static org.apache.flink.table.descriptors.Rowtime.ROWTIME_TIMESTAMPS_SERIALIZED;
+import static org.apache.flink.table.descriptors.Rowtime.ROWTIME_TIMESTAMPS_TYPE;
+import static org.apache.flink.table.descriptors.Rowtime.ROWTIME_WATERMARKS_CLASS;
+import static org.apache.flink.table.descriptors.Rowtime.ROWTIME_WATERMARKS_DELAY;
+import static org.apache.flink.table.descriptors.Rowtime.ROWTIME_WATERMARKS_SERIALIZED;
+import static org.apache.flink.table.descriptors.Rowtime.ROWTIME_WATERMARKS_TYPE;
+import static org.apache.flink.table.descriptors.Schema.SCHEMA;
+import static org.apache.flink.table.descriptors.Schema.SCHEMA_DATA_TYPE;
+import static org.apache.flink.table.descriptors.Schema.SCHEMA_FROM;
+import static org.apache.flink.table.descriptors.Schema.SCHEMA_NAME;
+import static org.apache.flink.table.descriptors.Schema.SCHEMA_PROCTIME;
+import static org.apache.flink.table.descriptors.Schema.SCHEMA_TYPE;
 import static org.apache.flink.util.Preconditions.checkNotNull;
 
-public class KuduTableFactory implements TableSourceFactory<Row>, TableSinkFactory<Tuple2<Boolean, Row>> {
+/** Factory for Kudu table source/sink impls. */
+public class KuduTableFactory
+        implements TableSourceFactory<Row>, TableSinkFactory<Tuple2<Boolean, Row>> {
 
     public static final String KUDU_TABLE = "kudu.table";
     public static final String KUDU_MASTERS = "kudu.masters";
@@ -114,13 +137,14 @@ public class KuduTableFactory implements TableSourceFactory<Row>, TableSinkFacto
         return createTableSource(tableName, table.getSchema(), table.getOptions());
     }
 
-    private KuduTableSource createTableSource(String tableName, TableSchema schema, Map<String, String> props) {
+    private KuduTableSource createTableSource(
+            String tableName, TableSchema schema, Map<String, String> props) {
         String masterAddresses = props.get(KUDU_MASTERS);
         TableSchema physicalSchema = KuduTableUtils.getSchemaWithSqlTimestamp(schema);
         KuduTableInfo tableInfo = KuduTableUtils.createTableInfo(tableName, schema, props);
 
-        KuduReaderConfig.Builder configBuilder = KuduReaderConfig.Builder
-                .setMasters(masterAddresses);
+        KuduReaderConfig.Builder configBuilder =
+                KuduReaderConfig.Builder.setMasters(masterAddresses);
 
         return new KuduTableSource(configBuilder, tableInfo, physicalSchema, null, null);
     }
@@ -132,15 +156,16 @@ public class KuduTableFactory implements TableSourceFactory<Row>, TableSinkFacto
         return createTableSink(tableName, table.getSchema(), table.toProperties());
     }
 
-    private KuduTableSink createTableSink(String tableName, TableSchema schema, Map<String, String> props) {
+    private KuduTableSink createTableSink(
+            String tableName, TableSchema schema, Map<String, String> props) {
         DescriptorProperties properties = new DescriptorProperties();
         properties.putProperties(props);
         String masterAddresses = props.get(KUDU_MASTERS);
         TableSchema physicalSchema = KuduTableUtils.getSchemaWithSqlTimestamp(schema);
         KuduTableInfo tableInfo = KuduTableUtils.createTableInfo(tableName, schema, props);
 
-        KuduWriterConfig.Builder configBuilder = KuduWriterConfig.Builder
-                .setMasters(masterAddresses);
+        KuduWriterConfig.Builder configBuilder =
+                KuduWriterConfig.Builder.setMasters(masterAddresses);
 
         Optional<Long> operationTimeout = properties.getOptionalLong(KUDU_OPERATION_TIMEOUT);
         Optional<Integer> flushInterval = properties.getOptionalInt(KUDU_FLUSH_INTERVAL);

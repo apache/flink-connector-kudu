@@ -15,6 +15,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package org.apache.flink.connectors.kudu.table.dynamic.catalog;
 
 import org.apache.flink.annotation.Internal;
@@ -22,6 +23,7 @@ import org.apache.flink.configuration.ConfigOption;
 import org.apache.flink.table.catalog.Catalog;
 import org.apache.flink.table.factories.CatalogFactory;
 import org.apache.flink.table.factories.FactoryUtil;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -32,9 +34,7 @@ import static org.apache.flink.connectors.kudu.table.dynamic.KuduDynamicTableSou
 import static org.apache.flink.connectors.kudu.table.dynamic.KuduDynamicTableSourceSinkFactory.KUDU_MASTERS;
 import static org.apache.flink.table.factories.FactoryUtil.PROPERTY_VERSION;
 
-/**
- * Factory for {@link KuduDynamicCatalog}.
- */
+/** Factory for {@link KuduDynamicCatalog}. */
 @Internal
 public class KuduCatalogFactory implements CatalogFactory {
 
@@ -64,8 +64,6 @@ public class KuduCatalogFactory implements CatalogFactory {
         final FactoryUtil.CatalogFactoryHelper helper =
                 FactoryUtil.createCatalogFactoryHelper(this, context);
         helper.validate();
-        return new KuduDynamicCatalog(context.getName(),
-                helper.getOptions().get(KUDU_MASTERS));
+        return new KuduDynamicCatalog(context.getName(), helper.getOptions().get(KUDU_MASTERS));
     }
-
 }

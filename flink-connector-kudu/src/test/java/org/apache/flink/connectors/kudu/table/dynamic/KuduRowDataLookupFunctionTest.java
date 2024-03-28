@@ -14,6 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package org.apache.flink.connectors.kudu.table.dynamic;
 
 import org.apache.flink.connectors.kudu.connector.KuduTableInfo;
@@ -23,6 +24,7 @@ import org.apache.flink.connectors.kudu.table.function.lookup.KuduLookupOptions;
 import org.apache.flink.connectors.kudu.table.function.lookup.KuduRowDataLookupFunction;
 import org.apache.flink.table.data.RowData;
 import org.apache.flink.util.Collector;
+
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -33,10 +35,7 @@ import java.util.stream.Collectors;
 
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
-
-/**
- * Unit Tests for {@link KuduRowDataLookupFunction}.
- */
+/** Unit Tests for {@link KuduRowDataLookupFunction}. */
 public class KuduRowDataLookupFunctionTest extends KuduTestBase {
     public static final String INPUT_TABLE = "books";
     public static KuduTableInfo tableInfo;
@@ -57,8 +56,8 @@ public class KuduRowDataLookupFunctionTest extends KuduTestBase {
     public void testEval() throws Exception {
         KuduLookupOptions lookupOptions = KuduLookupOptions.builder().build();
 
-        KuduRowDataLookupFunction lookupFunction = buildRowDataLookupFunction(lookupOptions, new String[]{
-                "id"});
+        KuduRowDataLookupFunction lookupFunction =
+                buildRowDataLookupFunction(lookupOptions, new String[] {"id"});
 
         ListOutputCollector collector = new ListOutputCollector();
         lookupFunction.setCollector(collector);
@@ -80,14 +79,15 @@ public class KuduRowDataLookupFunctionTest extends KuduTestBase {
 
     @Test
     public void testCacheEval() throws Exception {
-        KuduLookupOptions lookupOptions = KuduLookupOptions.builder()
-                .withCacheMaxSize(1024)
-                .withMaxRetryTimes(3)
-                .withCacheExpireMs(10)
-                .build();
+        KuduLookupOptions lookupOptions =
+                KuduLookupOptions.builder()
+                        .withCacheMaxSize(1024)
+                        .withMaxRetryTimes(3)
+                        .withCacheExpireMs(10)
+                        .build();
 
-        KuduRowDataLookupFunction lookupFunction = buildRowDataLookupFunction(lookupOptions, new String[]{
-                "id"});
+        KuduRowDataLookupFunction lookupFunction =
+                buildRowDataLookupFunction(lookupOptions, new String[] {"id"});
 
         ListOutputCollector collector = new ListOutputCollector();
         lookupFunction.setCollector(collector);
@@ -107,10 +107,10 @@ public class KuduRowDataLookupFunctionTest extends KuduTestBase {
         assertNotNull(result);
     }
 
-    private KuduRowDataLookupFunction buildRowDataLookupFunction(KuduLookupOptions lookupOptions, String[] keyNames) {
-        KuduReaderConfig config = KuduReaderConfig.Builder.setMasters(getMasterAddress())
-                .setRowLimit(10)
-                .build();
+    private KuduRowDataLookupFunction buildRowDataLookupFunction(
+            KuduLookupOptions lookupOptions, String[] keyNames) {
+        KuduReaderConfig config =
+                KuduReaderConfig.Builder.setMasters(getMasterAddress()).setRowLimit(10).build();
         return new KuduRowDataLookupFunction.Builder()
                 .kuduReaderConfig(config)
                 .kuduLookupOptions(lookupOptions)
@@ -118,18 +118,12 @@ public class KuduRowDataLookupFunctionTest extends KuduTestBase {
                 .projectedFields(getFieldNames())
                 .tableInfo(tableInfo)
                 .build();
-
     }
 
     private String[] getFieldNames() {
-        return new String[]{
-                "id", "title", "author", "price", "quantity"
-        };
+        return new String[] {"id", "title", "author", "price", "quantity"};
     }
 
-    /**
-     * ouput collector
-     */
     private static final class ListOutputCollector implements Collector<RowData> {
 
         private final List<RowData> output = new ArrayList<>();
@@ -140,8 +134,7 @@ public class KuduRowDataLookupFunctionTest extends KuduTestBase {
         }
 
         @Override
-        public void close() {
-        }
+        public void close() {}
 
         public List<RowData> getOutputs() {
             return output;

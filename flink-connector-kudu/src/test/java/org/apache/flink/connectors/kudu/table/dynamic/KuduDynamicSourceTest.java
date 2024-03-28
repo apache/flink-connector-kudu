@@ -14,6 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package org.apache.flink.connectors.kudu.table.dynamic;
 
 import org.apache.flink.connectors.kudu.connector.KuduTableInfo;
@@ -23,6 +24,7 @@ import org.apache.flink.table.api.TableEnvironment;
 import org.apache.flink.table.api.bridge.java.StreamTableEnvironment;
 import org.apache.flink.types.Row;
 import org.apache.flink.util.CollectionUtil;
+
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -35,9 +37,7 @@ import java.util.stream.Stream;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
-/**
- * Unit Tests for {@link KuduDynamicTableSource}.
- */
+/** Unit Tests for {@link KuduDynamicTableSource}. */
 public class KuduDynamicSourceTest extends KuduTestBase {
     public static final String INPUT_TABLE = "books";
     public static StreamExecutionEnvironment env;
@@ -77,8 +77,8 @@ public class KuduDynamicSourceTest extends KuduTestBase {
                         + "  'kudu.table'='"
                         + INPUT_TABLE
                         + "',"
-                        + "'kudu.scan.row-size'='10'," +
-                        "'kudu.primary-key-columns'='id'"
+                        + "'kudu.scan.row-size'='10',"
+                        + "'kudu.primary-key-columns'='id'"
                         + ")");
 
         Iterator<Row> collected = tEnv.executeSql("SELECT * FROM " + INPUT_TABLE).collect();
@@ -104,13 +104,12 @@ public class KuduDynamicSourceTest extends KuduTestBase {
                         + "  'kudu.table'='"
                         + INPUT_TABLE
                         + "',"
-                        + "'kudu.scan.row-size'='10'," +
-                        "'kudu.primary-key-columns'='id'"
+                        + "'kudu.scan.row-size'='10',"
+                        + "'kudu.primary-key-columns'='id'"
                         + ")");
 
         Iterator<Row> collected =
-                tEnv.executeSql("SELECT id,title,author FROM " + INPUT_TABLE)
-                        .collect();
+                tEnv.executeSql("SELECT id,title,author FROM " + INPUT_TABLE).collect();
         assertNotNull(collected);
         List<String> result =
                 CollectionUtil.iteratorToList(collected).stream()
@@ -148,8 +147,8 @@ public class KuduDynamicSourceTest extends KuduTestBase {
                         + "  'kudu.table'='"
                         + INPUT_TABLE
                         + "',"
-                        + "'kudu.scan.row-size'='10'," +
-                        "'kudu.primary-key-columns'='id'"
+                        + "'kudu.scan.row-size'='10',"
+                        + "'kudu.primary-key-columns'='id'"
                         + ")");
 
         Iterator<Row> collected =
@@ -181,8 +180,8 @@ public class KuduDynamicSourceTest extends KuduTestBase {
                         + "  'kudu.table'='"
                         + INPUT_TABLE
                         + "',"
-                        + "'kudu.scan.row-size'='10'," +
-                        "'kudu.primary-key-columns'='id'"
+                        + "'kudu.scan.row-size'='10',"
+                        + "'kudu.primary-key-columns'='id'"
                         + ")");
 
         tEnv.executeSql(
@@ -203,11 +202,13 @@ public class KuduDynamicSourceTest extends KuduTestBase {
                         + ")");
 
         Iterator<Row> collected =
-                tEnv.executeSql("SELECT d.id, isbn, title FROM datagen as d"
-                                + " JOIN " + INPUT_TABLE
-                                + " FOR SYSTEM_TIME AS OF d.proctime AS k"
-                                + " ON d.id=k.id"
-                                + " WHERE k.title='Java for dummies'")
+                tEnv.executeSql(
+                                "SELECT d.id, isbn, title FROM datagen as d"
+                                        + " JOIN "
+                                        + INPUT_TABLE
+                                        + " FOR SYSTEM_TIME AS OF d.proctime AS k"
+                                        + " ON d.id=k.id"
+                                        + " WHERE k.title='Java for dummies'")
                         .collect();
         assertNotNull(collected);
         List<String> result =

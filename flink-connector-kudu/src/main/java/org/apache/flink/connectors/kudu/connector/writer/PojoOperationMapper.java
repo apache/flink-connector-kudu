@@ -14,19 +14,23 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package org.apache.flink.connectors.kudu.connector.writer;
 
 import org.apache.flink.annotation.PublicEvolving;
 
 import java.lang.reflect.Field;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
+/** Logic to map a given POJO to a Kudu-compatible format. */
 @PublicEvolving
 public class PojoOperationMapper<T> extends AbstractSingleOperationMapper<T> {
 
     private final Field[] fields;
-
-    protected PojoOperationMapper(Class<T> pojoClass, String[] columnNames) { this(pojoClass, columnNames, null); }
 
     public PojoOperationMapper(Class<T> pojoClass, String[] columnNames, KuduOperation operation) {
         super(columnNames, operation);
@@ -45,18 +49,24 @@ public class PojoOperationMapper<T> extends AbstractSingleOperationMapper<T> {
 
     private Field[] initFields(Class<T> pojoClass, String[] columnNames) {
         Map<String, Field> allFields = new HashMap<>();
-        getAllFields(new ArrayList<>(), pojoClass).stream().forEach(f -> {
-            if (!allFields.containsKey(f.getName())) {
-                allFields.put(f.getName(), f);
-            }
-        });
+        getAllFields(new ArrayList<>(), pojoClass)
+                .forEach(
+                        f -> {
+                            if (!allFields.containsKey(f.getName())) {
+                                allFields.put(f.getName(), f);
+                            }
+                        });
 
         Field[] fields = new Field[columnNames.length];
 
         for (int i = 0; i < columnNames.length; i++) {
             Field f = allFields.get(columnNames[i]);
             if (f == null) {
-                throw new RuntimeException("Cannot find field " + columnNames[i] + ". List of detected fields: " + allFields.keySet());
+                throw new RuntimeException(
+                        "Cannot find field "
+                                + columnNames[i]
+                                + ". List of detected fields: "
+                                + allFields.keySet());
             }
             f.setAccessible(true);
             fields[i] = f;

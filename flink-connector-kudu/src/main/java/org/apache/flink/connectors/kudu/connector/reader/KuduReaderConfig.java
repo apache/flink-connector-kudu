@@ -14,17 +14,20 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package org.apache.flink.connectors.kudu.connector.reader;
 
-import org.apache.commons.lang3.builder.ToStringBuilder;
 import org.apache.flink.annotation.PublicEvolving;
+
+import org.apache.commons.lang3.builder.ToStringBuilder;
 
 import java.io.Serializable;
 
 import static org.apache.flink.util.Preconditions.checkNotNull;
 
 /**
- * Configuration used by {@link org.apache.flink.connectors.kudu.format.KuduRowInputFormat}. Specifies connection and other necessary properties.
+ * Configuration used by {@link org.apache.flink.connectors.kudu.format.KuduRowInputFormat}.
+ * Specifies connection and other necessary properties.
  */
 @PublicEvolving
 public class KuduReaderConfig implements Serializable {
@@ -32,9 +35,7 @@ public class KuduReaderConfig implements Serializable {
     private final String masters;
     private final int rowLimit;
 
-    private KuduReaderConfig(
-            String masters,
-            int rowLimit) {
+    private KuduReaderConfig(String masters, int rowLimit) {
 
         this.masters = checkNotNull(masters, "Kudu masters cannot be null");
         this.rowLimit = checkNotNull(rowLimit, "Kudu rowLimit cannot be null");
@@ -56,9 +57,7 @@ public class KuduReaderConfig implements Serializable {
                 .toString();
     }
 
-    /**
-     * Builder for the {@link KuduReaderConfig}.
-     */
+    /** Builder for the {@link KuduReaderConfig}. */
     public static class Builder {
         private static final int DEFAULT_ROW_LIMIT = 0;
 
@@ -83,9 +82,7 @@ public class KuduReaderConfig implements Serializable {
         }
 
         public KuduReaderConfig build() {
-            return new KuduReaderConfig(
-                    masters,
-                    rowLimit);
+            return new KuduReaderConfig(masters, rowLimit);
         }
     }
 }

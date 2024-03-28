@@ -14,6 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package org.apache.flink.connectors.kudu.format;
 
 import org.apache.flink.annotation.PublicEvolving;
@@ -28,6 +29,7 @@ import org.apache.flink.connectors.kudu.connector.writer.KuduWriterConfig;
 import org.apache.flink.runtime.state.FunctionInitializationContext;
 import org.apache.flink.runtime.state.FunctionSnapshotContext;
 import org.apache.flink.streaming.api.checkpoint.CheckpointedFunction;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -36,8 +38,8 @@ import java.io.IOException;
 import static org.apache.flink.util.Preconditions.checkNotNull;
 
 /**
- * Output format for writing data into a Kudu table (defined by the provided {@link KuduTableInfo}) in both batch
- * and stream programs.
+ * Output format for writing data into a Kudu table (defined by the provided {@link KuduTableInfo})
+ * in both batch and stream programs.
  */
 @PublicEvolving
 public class KuduOutputFormat<IN> extends RichOutputFormat<IN> implements CheckpointedFunction {
@@ -51,11 +53,18 @@ public class KuduOutputFormat<IN> extends RichOutputFormat<IN> implements Checkp
 
     private transient KuduWriter kuduWriter;
 
-    public KuduOutputFormat(KuduWriterConfig writerConfig, KuduTableInfo tableInfo, KuduOperationMapper<IN> opsMapper) {
+    public KuduOutputFormat(
+            KuduWriterConfig writerConfig,
+            KuduTableInfo tableInfo,
+            KuduOperationMapper<IN> opsMapper) {
         this(writerConfig, tableInfo, opsMapper, new DefaultKuduFailureHandler());
     }
 
-    public KuduOutputFormat(KuduWriterConfig writerConfig, KuduTableInfo tableInfo, KuduOperationMapper<IN> opsMapper, KuduFailureHandler failureHandler) {
+    public KuduOutputFormat(
+            KuduWriterConfig writerConfig,
+            KuduTableInfo tableInfo,
+            KuduOperationMapper<IN> opsMapper,
+            KuduFailureHandler failureHandler) {
         this.tableInfo = checkNotNull(tableInfo, "tableInfo could not be null");
         this.writerConfig = checkNotNull(writerConfig, "config could not be null");
         this.opsMapper = checkNotNull(opsMapper, "opsMapper could not be null");
@@ -63,8 +72,7 @@ public class KuduOutputFormat<IN> extends RichOutputFormat<IN> implements Checkp
     }
 
     @Override
-    public void configure(Configuration parameters) {
-    }
+    public void configure(Configuration parameters) {}
 
     @Override
     public void open(int taskNumber, int numTasks) throws IOException {
@@ -89,7 +97,6 @@ public class KuduOutputFormat<IN> extends RichOutputFormat<IN> implements Checkp
     }
 
     @Override
-    public void initializeState(FunctionInitializationContext functionInitializationContext) throws Exception {
-
-    }
+    public void initializeState(FunctionInitializationContext functionInitializationContext)
+            throws Exception {}
 }

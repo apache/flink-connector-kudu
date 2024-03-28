@@ -14,6 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package org.apache.flink.connectors.kudu.table;
 
 import org.apache.flink.connectors.kudu.connector.KuduTableInfo;
@@ -31,6 +32,7 @@ import org.apache.flink.table.catalog.ObjectPath;
 import org.apache.flink.table.factories.TableFactoryService;
 import org.apache.flink.table.factories.TableSinkFactory;
 import org.apache.flink.table.sinks.TableSink;
+
 import org.apache.kudu.Type;
 import org.apache.kudu.client.KuduScanner;
 import org.apache.kudu.client.KuduTable;
@@ -40,36 +42,51 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.sql.Timestamp;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
 
+/** Tets for table factory. */
 public class KuduTableFactoryTest extends KuduTestBase {
     private StreamTableEnvironment tableEnv;
     private String kuduMasters;
 
     @BeforeEach
     public void init() {
-        StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment().setParallelism(1);
+        StreamExecutionEnvironment env =
+                StreamExecutionEnvironment.getExecutionEnvironment().setParallelism(1);
         tableEnv = KuduTableTestUtils.createTableEnvWithBlinkPlannerStreamingMode(env);
         kuduMasters = getMasterAddress();
     }
 
     @Test
     public void testMissingMasters() throws Exception {
-        tableEnv.executeSql("CREATE TABLE TestTable11 (`first` STRING, `second` INT) " +
-                "WITH ('connector.type'='kudu', 'kudu.table'='TestTable11')");
-        assertThrows(TableException.class,
+        tableEnv.executeSql(
+                "CREATE TABLE TestTable11 (`first` STRING, `second` INT) "
+                        + "WITH ('connector.type'='kudu', 'kudu.table'='TestTable11')");
+        assertThrows(
+                TableException.class,
                 () -> tableEnv.executeSql("INSERT INTO TestTable11 values ('f', 1)"));
     }
 
     @Test
     public void testNonExistingTable() throws Exception {
-        tableEnv.executeSql("CREATE TABLE TestTable11 (`first` STRING, `second` INT) " +
-                "WITH ('connector.type'='kudu', 'kudu.table'='TestTable11', 'kudu.masters'='" + kuduMasters + "')");
-        JobClient jobClient = tableEnv.executeSql("INSERT INTO TestTable11 values ('f', 1)").getJobClient().get();
+        tableEnv.executeSql(
+                "CREATE TABLE TestTable11 (`first` STRING, `second` INT) "
+                        + "WITH ('connector.type'='kudu', 'kudu.table'='TestTable11', 'kudu.masters'='"
+                        + kuduMasters
+                        + "')");
+        JobClient jobClient =
+                tableEnv.executeSql("INSERT INTO TestTable11 values ('f', 1)").getJobClient().get();
         try {
             jobClient.getJobExecutionResult().get();
             fail();
@@ -80,9 +97,12 @@ public class KuduTableFactoryTest extends KuduTestBase {
 
     @Test
     public void testCreateTable() throws Exception {
-        tableEnv.executeSql("CREATE TABLE TestTable11 (`first` STRING, `second` STRING) " +
-                "WITH ('connector.type'='kudu', 'kudu.table'='TestTable11', 'kudu.masters'='" + kuduMasters + "', " +
-                "'kudu.hash-columns'='first', 'kudu.primary-key-columns'='first')");
+        tableEnv.executeSql(
+                "CREATE TABLE TestTable11 (`first` STRING, `second` STRING) "
+                        + "WITH ('connector.type'='kudu', 'kudu.table'='TestTable11', 'kudu.masters'='"
+                        + kuduMasters
+                        + "', "
+                        + "'kudu.hash-columns'='first', 'kudu.primary-key-columns'='first')");
 
         tableEnv.executeSql("INSERT INTO TestTable11 values ('f', 's')")
                 .getJobClient()
@@ -97,10 +117,14 @@ public class KuduTableFactoryTest extends KuduTestBase {
     public void testTimestamp() throws Exception {
         // Timestamp should be bridged to sql.Timestamp
         // Test it when creating the table...
-        tableEnv.executeSql("CREATE TABLE TestTableTs (`first` STRING, `second` TIMESTAMP(3)) " +
-                "WITH ('connector.type'='kudu', 'kudu.masters'='" + kuduMasters + "', " +
-                "'kudu.hash-columns'='first', 'kudu.primary-key-columns'='first')");
-        tableEnv.executeSql("INSERT INTO TestTableTs values ('f', TIMESTAMP '2020-01-01 12:12:12.123456')")
+        tableEnv.executeSql(
+                "CREATE TABLE TestTableTs (`first` STRING, `second` TIMESTAMP(3)) "
+                        + "WITH ('connector.type'='kudu', 'kudu.masters'='"
+                        + kuduMasters
+                        + "', "
+                        + "'kudu.hash-columns'='first', 'kudu.primary-key-columns'='first')");
+        tableEnv.executeSql(
+                        "INSERT INTO TestTableTs values ('f', TIMESTAMP '2020-01-01 12:12:12.123456')")
                 .getJobClient()
                 .get()
                 .getJobExecutionResult()
@@ -120,18 +144,22 @@ public class KuduTableFactoryTest extends KuduTestBase {
         scanner.forEach(sc -> results.add(sc.getTimestamp("second")));
 
         assertEquals(2, results.size());
-        List<Timestamp> expected = Lists.newArrayList(
-                Timestamp.valueOf("2020-01-01 12:12:12.123"),
-                Timestamp.valueOf("2020-02-02 23:23:23"));
+        List<Timestamp> expected =
+                Lists.newArrayList(
+                        Timestamp.valueOf("2020-01-01 12:12:12.123"),
+                        Timestamp.valueOf("2020-02-02 23:23:23"));
         assertEquals(new HashSet<>(expected), results);
     }
 
     @Test
     public void testExistingTable() throws Exception {
         // Creating a table
-        tableEnv.executeSql("CREATE TABLE TestTable12 (`first` STRING, `second` STRING) " +
-                "WITH ('connector.type'='kudu', 'kudu.table'='TestTable12', 'kudu.masters'='" + kuduMasters + "', " +
-                "'kudu.hash-columns'='first', 'kudu.primary-key-columns'='first')");
+        tableEnv.executeSql(
+                "CREATE TABLE TestTable12 (`first` STRING, `second` STRING) "
+                        + "WITH ('connector.type'='kudu', 'kudu.table'='TestTable12', 'kudu.masters'='"
+                        + kuduMasters
+                        + "', "
+                        + "'kudu.hash-columns'='first', 'kudu.primary-key-columns'='first')");
 
         tableEnv.executeSql("INSERT INTO TestTable12 values ('f', 's')")
                 .getJobClient()
@@ -140,8 +168,11 @@ public class KuduTableFactoryTest extends KuduTestBase {
                 .get(1, TimeUnit.MINUTES);
 
         // Then another one in SQL that refers to the previously created one
-        tableEnv.executeSql("CREATE TABLE TestTable12b (`first` STRING, `second` STRING) " +
-                "WITH ('connector.type'='kudu', 'kudu.table'='TestTable12', 'kudu.masters'='" + kuduMasters + "')");
+        tableEnv.executeSql(
+                "CREATE TABLE TestTable12b (`first` STRING, `second` STRING) "
+                        + "WITH ('connector.type'='kudu', 'kudu.table'='TestTable12', 'kudu.masters'='"
+                        + kuduMasters
+                        + "')");
         tableEnv.executeSql("INSERT INTO TestTable12b values ('f2','s2')")
                 .getJobClient()
                 .get()
@@ -163,10 +194,11 @@ public class KuduTableFactoryTest extends KuduTestBase {
 
     @Test
     public void testTableSink() {
-        final TableSchema schema = TableSchema.builder()
-                .field("first", DataTypes.STRING())
-                .field("second", DataTypes.STRING())
-                .build();
+        final TableSchema schema =
+                TableSchema.builder()
+                        .field("first", DataTypes.STRING())
+                        .field("second", DataTypes.STRING())
+                        .build();
         final Map<String, String> properties = new HashMap<>();
         properties.put("connector.type", "kudu");
         properties.put("kudu.masters", kuduMasters);
@@ -176,15 +208,19 @@ public class KuduTableFactoryTest extends KuduTestBase {
         properties.put("kudu.flush-interval", "10000");
         properties.put("kudu.max-buffer-size", "10000");
 
-        KuduWriterConfig.Builder builder = KuduWriterConfig.Builder.setMasters(kuduMasters)
-                .setFlushInterval(10000)
-                .setMaxBufferSize(10000)
-                .setIgnoreDuplicate(true)
-                .setIgnoreNotFound(true);
+        KuduWriterConfig.Builder builder =
+                KuduWriterConfig.Builder.setMasters(kuduMasters)
+                        .setFlushInterval(10000)
+                        .setMaxBufferSize(10000)
+                        .setIgnoreDuplicate(true)
+                        .setIgnoreNotFound(true);
         KuduTableInfo kuduTableInfo = KuduTableInfo.forTable("TestTable12");
         KuduTableSink expected = new KuduTableSink(builder, kuduTableInfo, schema);
-        final TableSink<?> actualSink = TableFactoryService.find(TableSinkFactory.class, properties)
-                .createTableSink(ObjectPath.fromString("default.TestTable12"), new CatalogTableImpl(schema, properties, null));
+        final TableSink<?> actualSink =
+                TableFactoryService.find(TableSinkFactory.class, properties)
+                        .createTableSink(
+                                ObjectPath.fromString("default.TestTable12"),
+                                new CatalogTableImpl(schema, properties, null));
 
         assertEquals(expected, actualSink);
     }

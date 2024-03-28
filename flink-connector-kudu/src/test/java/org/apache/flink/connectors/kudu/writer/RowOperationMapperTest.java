@@ -14,12 +14,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package org.apache.flink.connectors.kudu.writer;
 
 import org.apache.flink.connectors.kudu.connector.KuduTestBase;
 import org.apache.flink.connectors.kudu.connector.writer.AbstractSingleOperationMapper;
 import org.apache.flink.connectors.kudu.connector.writer.RowOperationMapper;
 import org.apache.flink.types.Row;
+
 import org.apache.kudu.client.Operation;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
@@ -29,11 +31,14 @@ import java.util.List;
 import static org.junit.Assert.assertEquals;
 import static org.mockito.Mockito.verify;
 
+/** Tests for {@link RowOperationMapper}. */
 public class RowOperationMapperTest extends AbstractOperationTest {
 
     @Test
     void testGetField() {
-        RowOperationMapper mapper = new RowOperationMapper(KuduTestBase.columns, AbstractSingleOperationMapper.KuduOperation.INSERT);
+        RowOperationMapper mapper =
+                new RowOperationMapper(
+                        KuduTestBase.columns, AbstractSingleOperationMapper.KuduOperation.INSERT);
         Row inputRow = KuduTestBase.booksDataRow().get(0);
 
         for (int i = 0; i < inputRow.getArity(); i++) {
@@ -43,7 +48,9 @@ public class RowOperationMapperTest extends AbstractOperationTest {
 
     @Test
     void testCorrectOperationInsert() {
-        RowOperationMapper mapper = new RowOperationMapper(KuduTestBase.columns, AbstractSingleOperationMapper.KuduOperation.INSERT);
+        RowOperationMapper mapper =
+                new RowOperationMapper(
+                        KuduTestBase.columns, AbstractSingleOperationMapper.KuduOperation.INSERT);
         Row inputRow = KuduTestBase.booksDataRow().get(0);
 
         List<Operation> operations = mapper.createOperations(inputRow, mockTable);
@@ -54,7 +61,9 @@ public class RowOperationMapperTest extends AbstractOperationTest {
 
     @Test
     void testCorrectOperationUpsert() {
-        RowOperationMapper mapper = new RowOperationMapper(KuduTestBase.columns, AbstractSingleOperationMapper.KuduOperation.UPSERT);
+        RowOperationMapper mapper =
+                new RowOperationMapper(
+                        KuduTestBase.columns, AbstractSingleOperationMapper.KuduOperation.UPSERT);
         Row inputRow = KuduTestBase.booksDataRow().get(0);
 
         List<Operation> operations = mapper.createOperations(inputRow, mockTable);

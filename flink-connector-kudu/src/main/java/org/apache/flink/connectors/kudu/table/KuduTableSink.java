@@ -32,44 +32,63 @@ import org.apache.flink.types.Row;
 
 import java.util.Objects;
 
+/** Table API Kudu sink implementation. */
 public class KuduTableSink implements UpsertStreamTableSink<Row> {
 
     private final KuduWriterConfig.Builder writerConfigBuilder;
     private final TableSchema flinkSchema;
     private final KuduTableInfo tableInfo;
 
-    public KuduTableSink(KuduWriterConfig.Builder configBuilder, KuduTableInfo tableInfo, TableSchema flinkSchema) {
+    public KuduTableSink(
+            KuduWriterConfig.Builder configBuilder,
+            KuduTableInfo tableInfo,
+            TableSchema flinkSchema) {
         this.writerConfigBuilder = configBuilder;
         this.tableInfo = tableInfo;
         this.flinkSchema = flinkSchema;
     }
 
     @Override
-    public void setKeyFields(String[] keyFields) { /* this has no effect */}
+    public void setKeyFields(String[] keyFields) {
+        /* this has no effect */
+    }
 
     @Override
-    public void setIsAppendOnly(Boolean isAppendOnly) { /* this has no effect */}
+    public void setIsAppendOnly(Boolean isAppendOnly) {
+        /* this has no effect */
+    }
 
     @Override
-    public TypeInformation<Row> getRecordType() { return flinkSchema.toRowType(); }
+    public TypeInformation<Row> getRecordType() {
+        return flinkSchema.toRowType();
+    }
 
     @Override
     public DataStreamSink<?> consumeDataStream(DataStream<Tuple2<Boolean, Row>> dataStreamTuple) {
-        KuduSink upsertKuduSink = new KuduSink(writerConfigBuilder.build(), tableInfo, new UpsertOperationMapper(getTableSchema().getFieldNames()));
+        KuduSink upsertKuduSink =
+                new KuduSink(
+                        writerConfigBuilder.build(),
+                        tableInfo,
+                        new UpsertOperationMapper(getTableSchema().getFieldNames()));
 
         return dataStreamTuple
                 .addSink(upsertKuduSink)
                 .setParallelism(dataStreamTuple.getParallelism())
-                .name(TableConnectorUtils.generateRuntimeName(this.getClass(), getTableSchema().getFieldNames()));
+                .name(
+                        TableConnectorUtils.generateRuntimeName(
+                                this.getClass(), getTableSchema().getFieldNames()));
     }
 
     @Override
-    public TableSink<Tuple2<Boolean, Row>> configure(String[] fieldNames, TypeInformation<?>[] fieldTypes) {
+    public TableSink<Tuple2<Boolean, Row>> configure(
+            String[] fieldNames, TypeInformation<?>[] fieldTypes) {
         return new KuduTableSink(writerConfigBuilder, tableInfo, flinkSchema);
     }
 
     @Override
-    public TableSchema getTableSchema() { return flinkSchema; }
+    public TableSchema getTableSchema() {
+        return flinkSchema;
+    }
 
     @Override
     public boolean equals(Object o) {
@@ -80,9 +99,9 @@ public class KuduTableSink implements UpsertStreamTableSink<Row> {
             return false;
         }
         KuduTableSink that = (KuduTableSink) o;
-        return this.writerConfigBuilder.equals(that.writerConfigBuilder) &&
-                this.flinkSchema.equals(that.flinkSchema) &&
-                this.tableInfo.equals(that.tableInfo);
+        return this.writerConfigBuilder.equals(that.writerConfigBuilder)
+                && this.flinkSchema.equals(that.flinkSchema)
+                && this.tableInfo.equals(that.tableInfo);
     }
 
     @Override

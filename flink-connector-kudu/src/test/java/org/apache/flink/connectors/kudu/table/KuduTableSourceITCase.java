@@ -14,6 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package org.apache.flink.connectors.kudu.table;
 
 import org.apache.flink.connectors.kudu.connector.KuduTableInfo;
@@ -21,6 +22,7 @@ import org.apache.flink.connectors.kudu.connector.KuduTestBase;
 import org.apache.flink.table.api.TableEnvironment;
 import org.apache.flink.types.Row;
 import org.apache.flink.util.CloseableIterator;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -29,9 +31,7 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-/**
- * Integration tests for {@link KuduTableSource}.
- */
+/** Integration tests for {@link KuduTableSource}. */
 public class KuduTableSourceITCase extends KuduTestBase {
     private TableEnvironment tableEnv;
     private KuduCatalog catalog;
@@ -48,7 +48,8 @@ public class KuduTableSourceITCase extends KuduTestBase {
 
     @Test
     void testFullBatchScan() throws Exception {
-        CloseableIterator<Row> it = tableEnv.executeSql("select * from books order by id").collect();
+        CloseableIterator<Row> it =
+                tableEnv.executeSql("select * from books order by id").collect();
         List<Row> results = new ArrayList<>();
         it.forEachRemaining(results::add);
         assertEquals(5, results.size());
@@ -56,12 +57,14 @@ public class KuduTableSourceITCase extends KuduTestBase {
         tableEnv.executeSql("DROP TABLE books");
     }
 
-
     @Test
     void testScanWithProjectionAndFilter() throws Exception {
         // (price > 30 and price < 40)
-        CloseableIterator<Row> it = tableEnv.executeSql("SELECT title FROM books WHERE id IN (1003, 1004) and " +
-                "quantity < 40").collect();
+        CloseableIterator<Row> it =
+                tableEnv.executeSql(
+                                "SELECT title FROM books WHERE id IN (1003, 1004) and "
+                                        + "quantity < 40")
+                        .collect();
         List<Row> results = new ArrayList<>();
         it.forEachRemaining(results::add);
         assertEquals(1, results.size());

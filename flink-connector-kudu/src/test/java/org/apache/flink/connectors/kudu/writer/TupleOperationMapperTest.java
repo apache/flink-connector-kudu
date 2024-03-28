@@ -14,12 +14,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package org.apache.flink.connectors.kudu.writer;
 
 import org.apache.flink.api.java.tuple.Tuple5;
 import org.apache.flink.connectors.kudu.connector.KuduTestBase;
 import org.apache.flink.connectors.kudu.connector.writer.AbstractSingleOperationMapper;
 import org.apache.flink.connectors.kudu.connector.writer.TupleOperationMapper;
+
 import org.apache.kudu.client.Operation;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
@@ -29,12 +31,15 @@ import java.util.List;
 import static org.junit.Assert.assertEquals;
 import static org.mockito.Mockito.verify;
 
-public class TupleOpertaionMapperTest extends AbstractOperationTest {
+/** Tests for {@link TupleOperationMapper}. */
+public class TupleOperationMapperTest extends AbstractOperationTest {
     @Test
     void testGetField() {
         TupleOperationMapper<Tuple5<Integer, String, String, Double, Integer>> mapper =
-                new TupleOperationMapper<>(KuduTestBase.columns, AbstractSingleOperationMapper.KuduOperation.INSERT);
-        Tuple5<Integer, String, String, Double, Integer> inputTuple = KuduTestBase.booksDataTuple().get(0);
+                new TupleOperationMapper<>(
+                        KuduTestBase.columns, AbstractSingleOperationMapper.KuduOperation.INSERT);
+        Tuple5<Integer, String, String, Double, Integer> inputTuple =
+                KuduTestBase.booksDataTuple().get(0);
 
         for (int i = 0; i < inputTuple.getArity(); i++) {
             Assertions.assertEquals(inputTuple.getField(i), mapper.getField(inputTuple, i));
@@ -44,8 +49,10 @@ public class TupleOpertaionMapperTest extends AbstractOperationTest {
     @Test
     void testCorrectOperationInsert() {
         TupleOperationMapper<Tuple5<Integer, String, String, Double, Integer>> mapper =
-                new TupleOperationMapper<>(KuduTestBase.columns, AbstractSingleOperationMapper.KuduOperation.INSERT);
-        Tuple5<Integer, String, String, Double, Integer> inputTuple = KuduTestBase.booksDataTuple().get(0);
+                new TupleOperationMapper<>(
+                        KuduTestBase.columns, AbstractSingleOperationMapper.KuduOperation.INSERT);
+        Tuple5<Integer, String, String, Double, Integer> inputTuple =
+                KuduTestBase.booksDataTuple().get(0);
 
         List<Operation> operations = mapper.createOperations(inputTuple, mockTable);
 
@@ -56,8 +63,10 @@ public class TupleOpertaionMapperTest extends AbstractOperationTest {
     @Test
     void testCorrectOperationUpsert() {
         TupleOperationMapper<Tuple5<Integer, String, String, Double, Integer>> mapper =
-                new TupleOperationMapper<>(KuduTestBase.columns, AbstractSingleOperationMapper.KuduOperation.UPSERT);
-        Tuple5<Integer, String, String, Double, Integer> inputTuple = KuduTestBase.booksDataTuple().get(0);
+                new TupleOperationMapper<>(
+                        KuduTestBase.columns, AbstractSingleOperationMapper.KuduOperation.UPSERT);
+        Tuple5<Integer, String, String, Double, Integer> inputTuple =
+                KuduTestBase.booksDataTuple().get(0);
 
         List<Operation> operations = mapper.createOperations(inputTuple, mockTable);
 

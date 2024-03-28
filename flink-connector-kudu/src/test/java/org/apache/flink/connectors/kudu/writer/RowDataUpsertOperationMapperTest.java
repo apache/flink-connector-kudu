@@ -14,11 +14,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package org.apache.flink.connectors.kudu.writer;
 
 import org.apache.flink.connectors.kudu.connector.KuduTestBase;
 import org.apache.flink.connectors.kudu.connector.writer.RowDataUpsertOperationMapper;
 import org.apache.flink.table.data.RowData;
+
 import org.apache.kudu.client.Operation;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
@@ -28,9 +30,7 @@ import java.util.List;
 import static org.junit.Assert.assertEquals;
 import static org.mockito.Mockito.verify;
 
-/**
- * Unit Tests for {@link RowDataUpsertOperationMapper}.
- */
+/** Unit Tests for {@link RowDataUpsertOperationMapper}. */
 public class RowDataUpsertOperationMapperTest extends AbstractOperationTest {
 
     @Test
@@ -41,7 +41,6 @@ public class RowDataUpsertOperationMapperTest extends AbstractOperationTest {
 
         Assertions.assertEquals(inputRow.getInt(0), mapper.getField(inputRow, 0));
     }
-
 
     @Test
     void testCorrectOperationUpsert() {

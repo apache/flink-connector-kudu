@@ -14,6 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package org.apache.flink.connectors.kudu.connector;
 
 import org.apache.flink.table.data.binary.BinaryStringData;
@@ -24,18 +25,19 @@ import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 
+/** Tests for {@link KuduFilterInfo}. */
 public class KuduFilterInfoTest {
 
     @Test
     void testKuduFilterInfoWithBinaryStringData() {
         String filterValue = "someValue";
 
-        KuduFilterInfo kuduFilterInfo = KuduFilterInfo.Builder.create("col")
-                .equalTo(BinaryStringData.fromString(filterValue))
-                .build();
+        KuduFilterInfo kuduFilterInfo =
+                KuduFilterInfo.Builder.create("col")
+                        .equalTo(BinaryStringData.fromString(filterValue))
+                        .build();
 
         ColumnSchema colSchema = new ColumnSchema.ColumnSchemaBuilder("col", Type.STRING).build();
         assertDoesNotThrow(() -> kuduFilterInfo.toPredicate(colSchema));
     }
-
 }

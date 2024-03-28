@@ -14,9 +14,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package org.apache.flink.connectors.kudu.connector.writer;
 
 import org.apache.flink.annotation.PublicEvolving;
+
 import org.apache.kudu.client.KuduTable;
 import org.apache.kudu.client.Operation;
 import org.apache.kudu.client.PartialRow;
@@ -26,14 +28,13 @@ import java.util.List;
 import java.util.Optional;
 
 /**
- * Base implementation for {@link KuduOperationMapper}s that have one-to-one input to
- * Kudu operation mapping. It requires a fixed table schema to be provided at construction
- * time and only requires users to implement a getter for a specific column index (relative
- * to the ones provided in the constructor).
- * <br>
- * Supports both fixed operation type per record by specifying the {@link KuduOperation} or a
- * custom implementation for creating the base {@link Operation} throwugh the
- * {@link #createBaseOperation(Object, KuduTable)} method.
+ * Base implementation for {@link KuduOperationMapper}s that have one-to-one input to Kudu operation
+ * mapping. It requires a fixed table schema to be provided at construction time and only requires
+ * users to implement a getter for a specific column index (relative to the ones provided in the
+ * constructor). <br>
+ * Supports both fixed operation type per record by specifying the {@link KuduOperation} or a custom
+ * implementation for creating the base {@link Operation} through the {@link
+ * #createBaseOperation(Object, KuduTable)} method.
  *
  * @param <T> Input type
  */
@@ -56,14 +57,15 @@ public abstract class AbstractSingleOperationMapper<T> implements KuduOperationM
      * Returns the object corresponding to the given column index.
      *
      * @param input Input element
-     * @param i     Column index
+     * @param i Column index
      * @return Column value
      */
     public abstract Object getField(T input, int i);
 
     public Optional<Operation> createBaseOperation(T input, KuduTable table) {
         if (operation == null) {
-            throw new UnsupportedOperationException("createBaseOperation must be overridden if no operation specified in constructor");
+            throw new UnsupportedOperationException(
+                    "createBaseOperation must be overridden if no operation specified in constructor");
         }
         switch (operation) {
             case INSERT:
@@ -96,6 +98,7 @@ public abstract class AbstractSingleOperationMapper<T> implements KuduOperationM
         return Collections.singletonList(operation);
     }
 
+    /** Kudu operation types. */
     public enum KuduOperation {
         INSERT,
         UPDATE,

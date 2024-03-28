@@ -14,6 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package org.apache.flink.connectors.kudu.connector.writer;
 
 import org.apache.flink.annotation.Internal;
@@ -24,6 +25,7 @@ import org.apache.flink.table.data.StringData;
 import org.apache.flink.table.types.DataType;
 import org.apache.flink.table.types.logical.DecimalType;
 import org.apache.flink.table.types.logical.LogicalType;
+
 import org.apache.kudu.client.KuduTable;
 import org.apache.kudu.client.Operation;
 import org.slf4j.Logger;
@@ -34,11 +36,11 @@ import java.util.Optional;
 
 import static org.apache.flink.table.types.logical.utils.LogicalTypeChecks.getPrecision;
 
+/** Logic to map Flink UPSERT RowData to a Kudu-compatible format. */
 @Internal
 public class RowDataUpsertOperationMapper extends AbstractSingleOperationMapper<RowData> {
 
     private static final Logger LOG = LoggerFactory.getLogger(RowDataUpsertOperationMapper.class);
-
 
     private static final int MIN_TIME_PRECISION = 0;
     private static final int MAX_TIME_PRECISION = 3;
@@ -49,9 +51,10 @@ public class RowDataUpsertOperationMapper extends AbstractSingleOperationMapper<
 
     public RowDataUpsertOperationMapper(TableSchema schema) {
         super(schema.getFieldNames());
-        logicalTypes = Arrays.stream(schema.getFieldDataTypes())
-                .map(DataType::getLogicalType)
-                .toArray(LogicalType[]::new);
+        logicalTypes =
+                Arrays.stream(schema.getFieldDataTypes())
+                        .map(DataType::getLogicalType)
+                        .toArray(LogicalType[]::new);
     }
 
     @Override
@@ -66,29 +69,31 @@ public class RowDataUpsertOperationMapper extends AbstractSingleOperationMapper<
         LogicalType fieldType = logicalTypes[i];
         switch (fieldType.getTypeRoot()) {
             case CHAR:
-            case VARCHAR: {
-                StringData data = input.getString(i);
-                if (data != null) {
-                    return data.toString();
+            case VARCHAR:
+                {
+                    StringData data = input.getString(i);
+                    if (data != null) {
+                        return data.toString();
+                    }
+                    return null;
                 }
-                return null;
-            }
             case BOOLEAN:
                 return input.getBoolean(i);
             case BINARY:
             case VARBINARY:
                 return input.getBinary(i);
-            case DECIMAL: {
-                DecimalType decimalType = (DecimalType) fieldType;
-                final int precision = decimalType.getPrecision();
-                final int scale = decimalType.getScale();
-                DecimalData data = input.getDecimal(i, precision, scale);
-                if (data != null) {
-                    return data.toBigDecimal();
-                } else {
-                    return null;
+            case DECIMAL:
+                {
+                    DecimalType decimalType = (DecimalType) fieldType;
+                    final int precision = decimalType.getPrecision();
+                    final int scale = decimalType.getScale();
+                    DecimalData data = input.getDecimal(i, precision, scale);
+                    if (data != null) {
+                        return data.toBigDecimal();
+                    } else {
+                        return null;
+                    }
                 }
-            }
             case TINYINT:
                 return input.getByte(i);
             case SMALLINT:
@@ -101,8 +106,10 @@ public class RowDataUpsertOperationMapper extends AbstractSingleOperationMapper<
                 final int timePrecision = getPrecision(fieldType);
                 if (timePrecision < MIN_TIME_PRECISION || timePrecision > MAX_TIME_PRECISION) {
                     throw new UnsupportedOperationException(
-                            String.format("The precision %s of TIME type is out of the range [%s, %s] supported by " +
-                                    "kudu connector", timePrecision, MIN_TIME_PRECISION, MAX_TIME_PRECISION));
+                            String.format(
+                                    "The precision %s of TIME type is out of the range [%s, %s] supported by "
+                                            + "kudu connector",
+                                    timePrecision, MIN_TIME_PRECISION, MAX_TIME_PRECISION));
                 }
                 return input.getInt(i);
             case BIGINT:
@@ -115,10 +122,14 @@ public class RowDataUpsertOperationMapper extends AbstractSingleOperationMapper<
             case TIMESTAMP_WITHOUT_TIME_ZONE:
             case TIMESTAMP_WITH_LOCAL_TIME_ZONE:
                 final int timestampPrecision = getPrecision(fieldType);
-                if (timestampPrecision < MIN_TIMESTAMP_PRECISION || timestampPrecision > MAX_TIMESTAMP_PRECISION) {
+                if (timestampPrecision < MIN_TIMESTAMP_PRECISION
+                        || timestampPrecision > MAX_TIMESTAMP_PRECISION) {
                     throw new UnsupportedOperationException(
-                            String.format("The precision %s of TIMESTAMP type is out of the range [%s, %s] supported " +
-                                            "by kudu connector", timestampPrecision, MIN_TIMESTAMP_PRECISION,
+                            String.format(
+                                    "The precision %s of TIMESTAMP type is out of the range [%s, %s] supported "
+                                            + "by kudu connector",
+                                    timestampPrecision,
+                                    MIN_TIMESTAMP_PRECISION,
                                     MAX_TIMESTAMP_PRECISION));
                 }
                 return input.getTimestamp(i, timestampPrecision).toTimestamp();

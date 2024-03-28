@@ -14,9 +14,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package org.apache.flink.connectors.kudu.connector.writer;
 
 import org.apache.flink.annotation.PublicEvolving;
+
 import org.apache.kudu.client.KuduTable;
 import org.apache.kudu.client.Operation;
 
@@ -24,9 +26,9 @@ import java.io.Serializable;
 import java.util.List;
 
 /**
- * Encapsulates the logic of mapping input records (of a DataStream) to operations
- * executed in Kudu. By allowing to return a list of operations we give flexibility
- * to the implementers to provide more sophisticated logic.
+ * Encapsulates the logic of mapping input records (of a DataStream) to operations executed in Kudu.
+ * By allowing to return a list of operations we give flexibility to the implementers to provide
+ * more sophisticated logic.
  *
  * @param <T> Type of the input data
  */
@@ -34,13 +36,11 @@ import java.util.List;
 public interface KuduOperationMapper<T> extends Serializable {
 
     /**
-     * Create a list of operations to be executed by the {@link KuduWriter} for the
-     * current input
+     * Create a list of operations to be executed by the {@link KuduWriter} for the current input.
      *
      * @param input input element
      * @param table table for which the operations should be created
      * @return List of operations to be executed on the table
      */
     List<Operation> createOperations(T input, KuduTable table);
-
 }

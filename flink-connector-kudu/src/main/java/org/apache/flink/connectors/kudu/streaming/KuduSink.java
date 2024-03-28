@@ -14,6 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package org.apache.flink.connectors.kudu.streaming;
 
 import org.apache.flink.annotation.PublicEvolving;
@@ -28,18 +29,20 @@ import org.apache.flink.runtime.state.FunctionInitializationContext;
 import org.apache.flink.runtime.state.FunctionSnapshotContext;
 import org.apache.flink.streaming.api.checkpoint.CheckpointedFunction;
 import org.apache.flink.streaming.api.functions.sink.RichSinkFunction;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import static org.apache.flink.util.Preconditions.checkNotNull;
 
 /**
- * Streaming Sink that executes Kudu operations based on the incoming elements.
- * The target Kudu table is defined in the {@link KuduTableInfo} object together with parameters for table
- * creation in case the table does not exist.
- * <p>
- * Incoming records are mapped to Kudu table operations using the provided {@link KuduOperationMapper} logic. While
- * failures resulting from the operations are handled by the {@link KuduFailureHandler} instance.
+ * Streaming Sink that executes Kudu operations based on the incoming elements. The target Kudu
+ * table is defined in the {@link KuduTableInfo} object together with parameters for table creation
+ * in case the table does not exist.
+ *
+ * <p>Incoming records are mapped to Kudu table operations using the provided {@link
+ * KuduOperationMapper} logic. While failures resulting from the operations are handled by the
+ * {@link KuduFailureHandler} instance.
  *
  * @param <IN> Type of the input records
  */
@@ -55,27 +58,34 @@ public class KuduSink<IN> extends RichSinkFunction<IN> implements CheckpointedFu
     private transient KuduWriter kuduWriter;
 
     /**
-     * Creates a new {@link KuduSink} that will execute operations against the specified Kudu table (defined in {@link KuduTableInfo})
-     * for the incoming stream elements.
+     * Creates a new {@link KuduSink} that will execute operations against the specified Kudu table
+     * (defined in {@link KuduTableInfo}) for the incoming stream elements.
      *
      * @param writerConfig Writer configuration
-     * @param tableInfo    Table information for the target table
-     * @param opsMapper    Mapping logic from inputs to Kudu operations
+     * @param tableInfo Table information for the target table
+     * @param opsMapper Mapping logic from inputs to Kudu operations
      */
-    public KuduSink(KuduWriterConfig writerConfig, KuduTableInfo tableInfo, KuduOperationMapper<IN> opsMapper) {
+    public KuduSink(
+            KuduWriterConfig writerConfig,
+            KuduTableInfo tableInfo,
+            KuduOperationMapper<IN> opsMapper) {
         this(writerConfig, tableInfo, opsMapper, new DefaultKuduFailureHandler());
     }
 
     /**
-     * Creates a new {@link KuduSink} that will execute operations against the specified Kudu table (defined in {@link KuduTableInfo})
-     * for the incoming stream elements.
+     * Creates a new {@link KuduSink} that will execute operations against the specified Kudu table
+     * (defined in {@link KuduTableInfo}) for the incoming stream elements.
      *
-     * @param writerConfig   Writer configuration
-     * @param tableInfo      Table information for the target table
-     * @param opsMapper      Mapping logic from inputs to Kudu operations
+     * @param writerConfig Writer configuration
+     * @param tableInfo Table information for the target table
+     * @param opsMapper Mapping logic from inputs to Kudu operations
      * @param failureHandler Custom failure handler instance
      */
-    public KuduSink(KuduWriterConfig writerConfig, KuduTableInfo tableInfo, KuduOperationMapper<IN> opsMapper, KuduFailureHandler failureHandler) {
+    public KuduSink(
+            KuduWriterConfig writerConfig,
+            KuduTableInfo tableInfo,
+            KuduOperationMapper<IN> opsMapper,
+            KuduFailureHandler failureHandler) {
         this.tableInfo = checkNotNull(tableInfo, "tableInfo could not be null");
         this.writerConfig = checkNotNull(writerConfig, "config could not be null");
         this.opsMapper = checkNotNull(opsMapper, "opsMapper could not be null");
@@ -109,7 +119,6 @@ public class KuduSink<IN> extends RichSinkFunction<IN> implements CheckpointedFu
     }
 
     @Override
-    public void initializeState(FunctionInitializationContext functionInitializationContext) throws Exception {
-    }
-
+    public void initializeState(FunctionInitializationContext functionInitializationContext)
+            throws Exception {}
 }
