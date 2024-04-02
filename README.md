@@ -2,6 +2,10 @@
 
 This repository contains the official Apache Flink Kudu connector.
 
+## Forked from Bahir
+
+The connector code is forked from [Apache Bahir](https://bahir.apache.org/) project after its retirement. 
+
 ## Apache Flink
 
 Apache Flink is an open source stream processing framework with powerful stream- and batch-processing capabilities.
