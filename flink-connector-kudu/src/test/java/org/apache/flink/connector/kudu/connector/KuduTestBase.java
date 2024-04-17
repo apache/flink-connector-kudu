@@ -283,8 +283,8 @@ public class KuduTestBase {
             String masterAddresses = getMasterAddress();
             KuduWriterConfig writerConfig =
                     KuduWriterConfig.Builder.setMasters(masterAddresses).build();
-            KuduWriter kuduWriter =
-                    new KuduWriter(
+            KuduWriter<Row> kuduWriter =
+                    new KuduWriter<>(
                             tableInfo,
                             writerConfig,
                             new RowOperationMapper(
@@ -293,7 +293,7 @@ public class KuduTestBase {
                     .forEach(
                             row -> {
                                 try {
-                                    kuduWriter.write(row);
+                                    kuduWriter.write(row, null);
                                 } catch (Exception e) {
                                     e.printStackTrace();
                                 }
@@ -309,8 +309,8 @@ public class KuduTestBase {
             String masterAddresses = getMasterAddress();
             KuduWriterConfig writerConfig =
                     KuduWriterConfig.Builder.setMasters(masterAddresses).build();
-            KuduWriter kuduWriter =
-                    new KuduWriter(
+            KuduWriter<Row> kuduWriter =
+                    new KuduWriter<>(
                             tableInfo,
                             writerConfig,
                             new RowOperationMapper(

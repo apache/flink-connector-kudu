@@ -20,11 +20,11 @@ package org.apache.flink.connector.kudu.table.dynamic;
 import org.apache.flink.connector.kudu.connector.KuduTableInfo;
 import org.apache.flink.connector.kudu.connector.writer.KuduWriterConfig;
 import org.apache.flink.connector.kudu.connector.writer.RowDataUpsertOperationMapper;
-import org.apache.flink.connector.kudu.streaming.KuduSink;
+import org.apache.flink.connector.kudu.sink.KuduSink;
 import org.apache.flink.table.api.TableSchema;
 import org.apache.flink.table.connector.ChangelogMode;
 import org.apache.flink.table.connector.sink.DynamicTableSink;
-import org.apache.flink.table.connector.sink.SinkFunctionProvider;
+import org.apache.flink.table.connector.sink.SinkV2Provider;
 import org.apache.flink.table.data.RowData;
 import org.apache.flink.types.RowKind;
 import org.apache.flink.util.Preconditions;
@@ -66,11 +66,12 @@ public class KuduDynamicTableSink implements DynamicTableSink {
     @Override
     public SinkRuntimeProvider getSinkRuntimeProvider(Context context) {
         KuduSink<RowData> upsertKuduSink =
-                new KuduSink<>(
-                        writerConfigBuilder.build(),
-                        tableInfo,
-                        new RowDataUpsertOperationMapper(flinkSchema));
-        return SinkFunctionProvider.of(upsertKuduSink);
+                KuduSink.<RowData>builder()
+                        .setWriterConfig(writerConfigBuilder.build())
+                        .setTableInfo(tableInfo)
+                        .setOperationMapper(new RowDataUpsertOperationMapper(flinkSchema))
+                        .build();
+        return SinkV2Provider.of(upsertKuduSink);
     }
 
     @Override

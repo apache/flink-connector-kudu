@@ -61,7 +61,7 @@ class KuduOutputFormatTest extends KuduTestBase {
                         new RowOperationMapper(
                                 KuduTestBase.columns,
                                 AbstractSingleOperationMapper.KuduOperation.INSERT));
-        Assertions.assertThrows(RuntimeException.class, () -> outputFormat.open(0, 1));
+        Assertions.assertThrows(RuntimeException.class, () -> outputFormat.open(null));
     }
 
     @Test
@@ -79,7 +79,7 @@ class KuduOutputFormatTest extends KuduTestBase {
                                 KuduTestBase.columns,
                                 AbstractSingleOperationMapper.KuduOperation.INSERT));
 
-        outputFormat.open(0, 1);
+        outputFormat.open(null);
 
         for (Row kuduRow : booksDataRow()) {
             outputFormat.writeRecord(kuduRow);
@@ -110,7 +110,7 @@ class KuduOutputFormatTest extends KuduTestBase {
                                 KuduTestBase.columns,
                                 AbstractSingleOperationMapper.KuduOperation.INSERT));
 
-        outputFormat.open(0, 1);
+        outputFormat.open(null);
 
         for (Row kuduRow : booksDataRow()) {
             outputFormat.writeRecord(kuduRow);
