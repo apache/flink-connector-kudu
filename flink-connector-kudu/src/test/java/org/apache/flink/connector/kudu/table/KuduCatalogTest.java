@@ -25,7 +25,7 @@ import org.apache.flink.connector.kudu.connector.KuduTestBase;
 import org.apache.flink.connector.kudu.connector.writer.AbstractSingleOperationMapper;
 import org.apache.flink.connector.kudu.connector.writer.KuduWriterConfig;
 import org.apache.flink.connector.kudu.connector.writer.TupleOperationMapper;
-import org.apache.flink.connector.kudu.streaming.KuduSink;
+import org.apache.flink.connector.kudu.sink.KuduSink;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.api.functions.sink.SinkFunction;
@@ -207,13 +207,15 @@ public class KuduCatalogTest extends KuduTestBase {
         KuduWriterConfig writerConfig =
                 KuduWriterConfig.Builder.setMasters(getMasterAddress()).build();
         env.fromCollection(input)
-                .addSink(
-                        new KuduSink<>(
-                                writerConfig,
-                                tableInfo,
-                                new TupleOperationMapper<>(
-                                        new String[] {"k", "v"},
-                                        AbstractSingleOperationMapper.KuduOperation.INSERT)));
+                .sinkTo(
+                        KuduSink.<Tuple2<Integer, String>>builder()
+                                .setWriterConfig(writerConfig)
+                                .setTableInfo(tableInfo)
+                                .setOperationMapper(
+                                        new TupleOperationMapper<>(
+                                                new String[] {"k", "v"},
+                                                AbstractSingleOperationMapper.KuduOperation.INSERT))
+                                .build());
         env.execute();
         // Reading and validating data
         env = StreamExecutionEnvironment.getExecutionEnvironment();

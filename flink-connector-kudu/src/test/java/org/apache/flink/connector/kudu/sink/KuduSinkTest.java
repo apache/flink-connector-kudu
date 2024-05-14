@@ -15,56 +15,45 @@
  * limitations under the License.
  */
 
-package org.apache.flink.connector.kudu.streaming;
+package org.apache.flink.connector.kudu.sink;
 
-import org.apache.flink.configuration.Configuration;
+import org.apache.flink.api.connector.sink2.SinkWriter;
 import org.apache.flink.connector.kudu.connector.KuduTableInfo;
 import org.apache.flink.connector.kudu.connector.KuduTestBase;
 import org.apache.flink.connector.kudu.connector.writer.AbstractSingleOperationMapper;
 import org.apache.flink.connector.kudu.connector.writer.KuduWriterConfig;
 import org.apache.flink.connector.kudu.connector.writer.RowOperationMapper;
-import org.apache.flink.streaming.api.operators.StreamingRuntimeContext;
 import org.apache.flink.types.Row;
 
 import org.apache.kudu.ColumnSchema;
 import org.apache.kudu.Type;
 import org.apache.kudu.client.CreateTableOptions;
 import org.apache.kudu.shaded.com.google.common.collect.Lists;
-import org.junit.jupiter.api.Assertions;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
-import org.mockito.Mockito;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.List;
 import java.util.UUID;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
 /** Tests for {@link KuduSink}. */
 public class KuduSinkTest extends KuduTestBase {
 
-    private static final Logger LOG = LoggerFactory.getLogger(KuduSinkTest.class);
     private static final String[] columns = new String[] {"id", "uuid"};
-    private static StreamingRuntimeContext context;
-
-    @BeforeAll
-    static void start() {
-        context = Mockito.mock(StreamingRuntimeContext.class);
-        Mockito.when(context.isCheckpointingEnabled()).thenReturn(true);
-    }
 
     @Test
-    void testInvalidKuduMaster() {
+    void testInvalidWriterConfig() {
         KuduTableInfo tableInfo = booksTableInfo(UUID.randomUUID().toString(), false);
-        Assertions.assertThrows(
-                NullPointerException.class,
-                () ->
-                        new KuduSink<>(
-                                null,
-                                tableInfo,
-                                new RowOperationMapper(
-                                        columns,
-                                        AbstractSingleOperationMapper.KuduOperation.INSERT)));
+
+        KuduSinkBuilder<Row> builder =
+                KuduSink.<Row>builder()
+                        .setTableInfo(tableInfo)
+                        .setOperationMapper(initOperationMapper(columns));
+
+        assertThatThrownBy(builder::build)
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageStartingWith("Writer config");
     }
 
     @Test
@@ -72,15 +61,30 @@ public class KuduSinkTest extends KuduTestBase {
         String masterAddresses = getMasterAddress();
         KuduWriterConfig writerConfig =
                 KuduWriterConfig.Builder.setMasters(masterAddresses).build();
-        Assertions.assertThrows(
-                NullPointerException.class,
-                () ->
-                        new KuduSink<>(
-                                writerConfig,
-                                null,
-                                new RowOperationMapper(
-                                        columns,
-                                        AbstractSingleOperationMapper.KuduOperation.INSERT)));
+
+        KuduSinkBuilder<Row> builder =
+                KuduSink.<Row>builder()
+                        .setWriterConfig(writerConfig)
+                        .setOperationMapper(initOperationMapper(columns));
+
+        assertThatThrownBy(builder::build)
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageStartingWith("Table info");
+    }
+
+    @Test
+    void testInvalidOperationMapper() {
+        String masterAddresses = getMasterAddress();
+        KuduTableInfo tableInfo = booksTableInfo(UUID.randomUUID().toString(), false);
+        KuduWriterConfig writerConfig =
+                KuduWriterConfig.Builder.setMasters(masterAddresses).build();
+
+        KuduSinkBuilder<Row> builder =
+                KuduSink.<Row>builder().setWriterConfig(writerConfig).setTableInfo(tableInfo);
+
+        assertThatThrownBy(builder::build)
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageStartingWith("Operation mapper");
     }
 
     @Test
@@ -89,15 +93,15 @@ public class KuduSinkTest extends KuduTestBase {
         KuduTableInfo tableInfo = booksTableInfo(UUID.randomUUID().toString(), false);
         KuduWriterConfig writerConfig =
                 KuduWriterConfig.Builder.setMasters(masterAddresses).build();
-        KuduSink<Row> sink =
-                new KuduSink<>(
-                        writerConfig,
-                        tableInfo,
-                        new RowOperationMapper(
-                                columns, AbstractSingleOperationMapper.KuduOperation.INSERT));
 
-        sink.setRuntimeContext(context);
-        Assertions.assertThrows(RuntimeException.class, () -> sink.open(new Configuration()));
+        KuduSink<Row> sink =
+                KuduSink.<Row>builder()
+                        .setWriterConfig(writerConfig)
+                        .setTableInfo(tableInfo)
+                        .setOperationMapper(initOperationMapper(columns))
+                        .build();
+
+        assertThatThrownBy(() -> sink.createWriter(null)).isInstanceOf(RuntimeException.class);
     }
 
     @Test
@@ -107,24 +111,24 @@ public class KuduSinkTest extends KuduTestBase {
         KuduTableInfo tableInfo = booksTableInfo(UUID.randomUUID().toString(), true);
         KuduWriterConfig writerConfig =
                 KuduWriterConfig.Builder.setMasters(masterAddresses).setStrongConsistency().build();
-        KuduSink<Row> sink =
-                new KuduSink<>(
-                        writerConfig,
-                        tableInfo,
-                        new RowOperationMapper(
-                                KuduTestBase.columns,
-                                AbstractSingleOperationMapper.KuduOperation.INSERT));
 
-        sink.setRuntimeContext(context);
-        sink.open(new Configuration());
+        KuduSink<Row> sink =
+                KuduSink.<Row>builder()
+                        .setWriterConfig(writerConfig)
+                        .setTableInfo(tableInfo)
+                        .setOperationMapper(initOperationMapper(KuduTestBase.columns))
+                        .build();
+
+        SinkWriter<Row> writer = sink.createWriter(null);
 
         for (Row kuduRow : booksDataRow()) {
-            sink.invoke(kuduRow);
+            writer.write(kuduRow, null);
         }
-        sink.close();
+        writer.close();
 
         List<Row> rows = readRows(tableInfo);
-        Assertions.assertEquals(5, rows.size());
+
+        assertThat(rows).hasSize(5);
         kuduRowsTest(rows);
     }
 
@@ -137,28 +141,28 @@ public class KuduSinkTest extends KuduTestBase {
                 KuduWriterConfig.Builder.setMasters(masterAddresses)
                         .setEventualConsistency()
                         .build();
-        KuduSink<Row> sink =
-                new KuduSink<>(
-                        writerConfig,
-                        tableInfo,
-                        new RowOperationMapper(
-                                KuduTestBase.columns,
-                                AbstractSingleOperationMapper.KuduOperation.INSERT));
 
-        sink.setRuntimeContext(context);
-        sink.open(new Configuration());
+        KuduSink<Row> sink =
+                KuduSink.<Row>builder()
+                        .setWriterConfig(writerConfig)
+                        .setTableInfo(tableInfo)
+                        .setOperationMapper(initOperationMapper(KuduTestBase.columns))
+                        .build();
+
+        SinkWriter<Row> writer = sink.createWriter(null);
 
         for (Row kuduRow : booksDataRow()) {
-            sink.invoke(kuduRow);
+            writer.write(kuduRow, null);
         }
 
         // sleep to allow eventual consistency to finish
         Thread.sleep(1000);
 
-        sink.close();
+        writer.close();
 
         List<Row> rows = readRows(tableInfo);
-        Assertions.assertEquals(5, rows.size());
+
+        assertThat(rows).hasSize(5);
         kuduRowsTest(rows);
     }
 
@@ -187,30 +191,34 @@ public class KuduSinkTest extends KuduTestBase {
                 KuduWriterConfig.Builder.setMasters(masterAddresses)
                         .setEventualConsistency()
                         .build();
-        KuduSink<Row> sink =
-                new KuduSink<>(
-                        writerConfig,
-                        tableInfo,
-                        new RowOperationMapper(
-                                columns, AbstractSingleOperationMapper.KuduOperation.INSERT));
 
-        sink.setRuntimeContext(context);
-        sink.open(new Configuration());
+        KuduSink<Row> sink =
+                KuduSink.<Row>builder()
+                        .setWriterConfig(writerConfig)
+                        .setTableInfo(tableInfo)
+                        .setOperationMapper(initOperationMapper(columns))
+                        .build();
+
+        SinkWriter<Row> writer = sink.createWriter(null);
 
         int totalRecords = 100000;
         for (int i = 0; i < totalRecords; i++) {
             Row kuduRow = new Row(2);
             kuduRow.setField(0, i);
             kuduRow.setField(1, UUID.randomUUID().toString());
-            sink.invoke(kuduRow);
+            writer.write(kuduRow, null);
         }
 
         // sleep to allow eventual consistency to finish
         Thread.sleep(1000);
 
-        sink.close();
+        writer.close();
 
         List<Row> rows = readRows(tableInfo);
-        Assertions.assertEquals(totalRecords, rows.size());
+        assertThat(rows).hasSize(totalRecords);
+    }
+
+    private RowOperationMapper initOperationMapper(String[] cols) {
+        return new RowOperationMapper(cols, AbstractSingleOperationMapper.KuduOperation.INSERT);
     }
 }

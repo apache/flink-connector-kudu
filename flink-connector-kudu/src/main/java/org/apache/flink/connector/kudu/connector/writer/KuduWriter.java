@@ -19,6 +19,7 @@ package org.apache.flink.connector.kudu.connector.writer;
 
 import org.apache.flink.annotation.Internal;
 import org.apache.flink.annotation.VisibleForTesting;
+import org.apache.flink.api.connector.sink2.SinkWriter;
 import org.apache.flink.connector.kudu.connector.KuduTableInfo;
 import org.apache.flink.connector.kudu.connector.failure.DefaultKuduFailureHandler;
 import org.apache.flink.connector.kudu.connector.failure.KuduFailureHandler;
@@ -35,11 +36,12 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 /** Writer to write data to a Kudu table. */
 @Internal
-public class KuduWriter<T> implements AutoCloseable {
+public class KuduWriter<T> implements SinkWriter<T>, AutoCloseable {
 
     private final Logger log = LoggerFactory.getLogger(getClass());
 
@@ -48,9 +50,9 @@ public class KuduWriter<T> implements AutoCloseable {
     private final KuduFailureHandler failureHandler;
     private final KuduOperationMapper<T> operationMapper;
 
-    private transient KuduClient client;
-    private transient KuduSession session;
-    private transient KuduTable table;
+    private final transient KuduClient client;
+    private final transient KuduSession session;
+    private final transient KuduTable table;
 
     public KuduWriter(
             KuduTableInfo tableInfo,
@@ -74,6 +76,50 @@ public class KuduWriter<T> implements AutoCloseable {
         this.session = obtainSession();
         this.table = obtainTable();
         this.operationMapper = operationMapper;
+    }
+
+    @Override
+    public void write(T input, Context context) throws IOException {
+        checkAsyncErrors();
+
+        for (Operation operation : operationMapper.createOperations(input, table)) {
+            checkErrors(session.apply(operation));
+        }
+    }
+
+    @Override
+    public void flush(boolean endOfInput) throws IOException {
+        checkAsyncErrors();
+        session.flush();
+        checkAsyncErrors();
+    }
+
+    @Override
+    public void close() throws IOException {
+        try {
+            flush(true);
+        } finally {
+            try {
+                if (session != null) {
+                    session.close();
+                }
+            } catch (Exception e) {
+                log.error("Error while closing session.", e);
+            }
+            try {
+                if (client != null) {
+                    client.close();
+                }
+            } catch (Exception e) {
+                log.error("Error while closing client.", e);
+            }
+        }
+    }
+
+    @VisibleForTesting
+    public DeleteTableResponse deleteTable() throws IOException {
+        String tableName = table.getName();
+        return client.deleteTable(tableName);
     }
 
     private KuduClient obtainClient() {
@@ -103,55 +149,9 @@ public class KuduWriter<T> implements AutoCloseable {
         throw new RuntimeException("Table " + tableName + " does not exist.");
     }
 
-    public void write(T input) throws IOException {
-        checkAsyncErrors();
-
-        for (Operation operation : operationMapper.createOperations(input, table)) {
-            checkErrors(session.apply(operation));
-        }
-    }
-
-    public void flushAndCheckErrors() throws IOException {
-        checkAsyncErrors();
-        flush();
-        checkAsyncErrors();
-    }
-
-    @VisibleForTesting
-    public DeleteTableResponse deleteTable() throws IOException {
-        String tableName = table.getName();
-        return client.deleteTable(tableName);
-    }
-
-    @Override
-    public void close() throws IOException {
-        try {
-            flushAndCheckErrors();
-        } finally {
-            try {
-                if (session != null) {
-                    session.close();
-                }
-            } catch (Exception e) {
-                log.error("Error while closing session.", e);
-            }
-            try {
-                if (client != null) {
-                    client.close();
-                }
-            } catch (Exception e) {
-                log.error("Error while closing client.", e);
-            }
-        }
-    }
-
-    private void flush() throws IOException {
-        session.flush();
-    }
-
     private void checkErrors(OperationResponse response) throws IOException {
         if (response != null && response.hasRowError()) {
-            failureHandler.onFailure(Arrays.asList(response.getRowError()));
+            failureHandler.onFailure(Collections.singletonList(response.getRowError()));
         } else {
             checkAsyncErrors();
         }

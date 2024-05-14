@@ -21,7 +21,7 @@ import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.connector.kudu.connector.KuduTableInfo;
 import org.apache.flink.connector.kudu.connector.writer.KuduWriterConfig;
-import org.apache.flink.connector.kudu.streaming.KuduSink;
+import org.apache.flink.connector.kudu.sink.KuduSink;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.datastream.DataStreamSink;
 import org.apache.flink.table.api.TableSchema;
@@ -65,14 +65,16 @@ public class KuduTableSink implements UpsertStreamTableSink<Row> {
 
     @Override
     public DataStreamSink<?> consumeDataStream(DataStream<Tuple2<Boolean, Row>> dataStreamTuple) {
-        KuduSink upsertKuduSink =
-                new KuduSink(
-                        writerConfigBuilder.build(),
-                        tableInfo,
-                        new UpsertOperationMapper(getTableSchema().getFieldNames()));
+        KuduSink<Tuple2<Boolean, Row>> upsertKuduSink =
+                KuduSink.<Tuple2<Boolean, Row>>builder()
+                        .setWriterConfig(writerConfigBuilder.build())
+                        .setTableInfo(tableInfo)
+                        .setOperationMapper(
+                                new UpsertOperationMapper(getTableSchema().getFieldNames()))
+                        .build();
 
         return dataStreamTuple
-                .addSink(upsertKuduSink)
+                .sinkTo(upsertKuduSink)
                 .setParallelism(dataStreamTuple.getParallelism())
                 .name(
                         TableConnectorUtils.generateRuntimeName(
