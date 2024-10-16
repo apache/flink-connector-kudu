@@ -30,9 +30,6 @@ import org.apache.flink.runtime.state.FunctionInitializationContext;
 import org.apache.flink.runtime.state.FunctionSnapshotContext;
 import org.apache.flink.streaming.api.checkpoint.CheckpointedFunction;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.io.IOException;
 
 import static org.apache.flink.util.Preconditions.checkNotNull;
@@ -44,14 +41,12 @@ import static org.apache.flink.util.Preconditions.checkNotNull;
 @PublicEvolving
 public class KuduOutputFormat<IN> extends RichOutputFormat<IN> implements CheckpointedFunction {
 
-    private final Logger log = LoggerFactory.getLogger(getClass());
-
     private final KuduTableInfo tableInfo;
     private final KuduWriterConfig writerConfig;
     private final KuduFailureHandler failureHandler;
     private final KuduOperationMapper<IN> opsMapper;
 
-    private transient KuduWriter kuduWriter;
+    private transient KuduWriter<IN> kuduWriter;
 
     public KuduOutputFormat(
             KuduWriterConfig writerConfig,
@@ -75,13 +70,13 @@ public class KuduOutputFormat<IN> extends RichOutputFormat<IN> implements Checkp
     public void configure(Configuration parameters) {}
 
     @Override
-    public void open(int taskNumber, int numTasks) throws IOException {
-        kuduWriter = new KuduWriter(tableInfo, writerConfig, opsMapper, failureHandler);
+    public void open(InitializationContext context) throws IOException {
+        kuduWriter = new KuduWriter<>(tableInfo, writerConfig, opsMapper, failureHandler);
     }
 
     @Override
     public void writeRecord(IN row) throws IOException {
-        kuduWriter.write(row);
+        kuduWriter.write(row, null);
     }
 
     @Override
@@ -92,11 +87,10 @@ public class KuduOutputFormat<IN> extends RichOutputFormat<IN> implements Checkp
     }
 
     @Override
-    public void snapshotState(FunctionSnapshotContext functionSnapshotContext) throws Exception {
-        kuduWriter.flushAndCheckErrors();
+    public void snapshotState(FunctionSnapshotContext context) throws Exception {
+        kuduWriter.flush(false);
     }
 
     @Override
-    public void initializeState(FunctionInitializationContext functionInitializationContext)
-            throws Exception {}
+    public void initializeState(FunctionInitializationContext context) {}
 }
