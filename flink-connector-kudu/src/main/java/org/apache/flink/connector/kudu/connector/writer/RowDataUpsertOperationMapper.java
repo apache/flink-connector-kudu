@@ -18,7 +18,7 @@
 package org.apache.flink.connector.kudu.connector.writer;
 
 import org.apache.flink.annotation.Internal;
-import org.apache.flink.table.api.TableSchema;
+import org.apache.flink.table.catalog.ResolvedSchema;
 import org.apache.flink.table.data.DecimalData;
 import org.apache.flink.table.data.RowData;
 import org.apache.flink.table.data.StringData;
@@ -31,7 +31,6 @@ import org.apache.kudu.client.Operation;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.Arrays;
 import java.util.Optional;
 
 import static org.apache.flink.table.types.logical.utils.LogicalTypeChecks.getPrecision;
@@ -47,12 +46,12 @@ public class RowDataUpsertOperationMapper extends AbstractSingleOperationMapper<
     private static final int MIN_TIMESTAMP_PRECISION = 0;
     private static final int MAX_TIMESTAMP_PRECISION = 6;
 
-    private LogicalType[] logicalTypes;
+    private final LogicalType[] logicalTypes;
 
-    public RowDataUpsertOperationMapper(TableSchema schema) {
-        super(schema.getFieldNames());
+    public RowDataUpsertOperationMapper(ResolvedSchema schema) {
+        super(schema.getColumnNames());
         logicalTypes =
-                Arrays.stream(schema.getFieldDataTypes())
+                schema.getColumnDataTypes().stream()
                         .map(DataType::getLogicalType)
                         .toArray(LogicalType[]::new);
     }
