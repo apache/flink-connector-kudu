@@ -22,8 +22,7 @@ import org.apache.flink.connector.kudu.connector.ColumnSchemasFactory;
 import org.apache.flink.connector.kudu.connector.CreateTableOptionsFactory;
 import org.apache.flink.connector.kudu.connector.KuduFilterInfo;
 import org.apache.flink.connector.kudu.connector.KuduTableInfo;
-import org.apache.flink.connector.kudu.table.dynamic.KuduDynamicTableSourceSinkFactory;
-import org.apache.flink.table.api.TableSchema;
+import org.apache.flink.table.catalog.ResolvedSchema;
 import org.apache.flink.table.expressions.CallExpression;
 import org.apache.flink.table.expressions.Expression;
 import org.apache.flink.table.expressions.FieldReferenceExpression;
@@ -32,8 +31,6 @@ import org.apache.flink.table.functions.BuiltInFunctionDefinitions;
 import org.apache.flink.table.functions.FunctionDefinition;
 import org.apache.flink.table.types.DataType;
 import org.apache.flink.table.types.logical.DecimalType;
-import org.apache.flink.table.types.logical.TimestampType;
-import org.apache.flink.table.utils.TableSchemaUtils;
 
 import org.apache.kudu.ColumnSchema;
 import org.apache.kudu.ColumnTypeAttributes;
@@ -44,7 +41,6 @@ import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nullable;
 
-import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -53,42 +49,40 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
+import static org.apache.flink.connector.kudu.table.KuduDynamicTableOptions.KUDU_HASH_COLS;
+import static org.apache.flink.connector.kudu.table.KuduDynamicTableOptions.KUDU_HASH_PARTITION_NUMS;
+import static org.apache.flink.connector.kudu.table.KuduDynamicTableOptions.KUDU_PRIMARY_KEY_COLS;
+import static org.apache.flink.connector.kudu.table.KuduDynamicTableOptions.KUDU_REPLICAS;
+
 /** Kudu table utilities. */
 public class KuduTableUtils {
 
     private static final Logger LOG = LoggerFactory.getLogger(KuduTableUtils.class);
 
     public static KuduTableInfo createTableInfo(
-            String tableName, TableSchema schema, Map<String, String> props) {
+            String tableName, ResolvedSchema schema, Map<String, String> props) {
         // Since KUDU_HASH_COLS is a required property for table creation, we use it to infer
         // whether to create table
         boolean createIfMissing =
-                props.containsKey(KuduDynamicTableSourceSinkFactory.KUDU_PRIMARY_KEY_COLS.key())
+                props.containsKey(KUDU_PRIMARY_KEY_COLS.key())
                         || schema.getPrimaryKey().isPresent();
         KuduTableInfo tableInfo = KuduTableInfo.forTable(tableName);
 
         if (createIfMissing) {
-
             List<Tuple2<String, DataType>> columns =
-                    getSchemaWithSqlTimestamp(schema).getTableColumns().stream()
-                            .map(tc -> Tuple2.of(tc.getName(), tc.getType()))
+                    schema.getColumns().stream()
+                            .map(col -> Tuple2.of(col.getName(), col.getDataType()))
                             .collect(Collectors.toList());
-
             List<String> keyColumns = getPrimaryKeyColumns(props, schema);
+
             ColumnSchemasFactory schemasFactory = () -> toKuduConnectorColumns(columns, keyColumns);
             int replicas =
-                    Optional.ofNullable(
-                                    props.get(
-                                            KuduDynamicTableSourceSinkFactory.KUDU_REPLICAS.key()))
+                    Optional.ofNullable(props.get(KUDU_REPLICAS.key()))
                             .map(Integer::parseInt)
                             .orElse(1);
             // if hash partitions nums not exists,default 3;
             int hashPartitionNums =
-                    Optional.ofNullable(
-                                    props.get(
-                                            KuduDynamicTableSourceSinkFactory
-                                                    .KUDU_HASH_PARTITION_NUMS
-                                                    .key()))
+                    Optional.ofNullable(props.get(KUDU_HASH_PARTITION_NUMS.key()))
                             .map(Integer::parseInt)
                             .orElse(3);
             CreateTableOptionsFactory optionsFactory =
@@ -100,7 +94,7 @@ public class KuduTableUtils {
         } else {
             LOG.debug(
                     "Property {} is missing, assuming the table is already created.",
-                    KuduDynamicTableSourceSinkFactory.KUDU_HASH_COLS.key());
+                    KUDU_HASH_COLS.key());
         }
 
         return tableInfo;
@@ -131,52 +125,29 @@ public class KuduTableUtils {
                 .collect(Collectors.toList());
     }
 
-    public static TableSchema kuduToFlinkSchema(Schema schema) {
-        TableSchema.Builder builder = TableSchema.builder();
+    public static org.apache.flink.table.api.Schema kuduToFlinkSchema(Schema schema) {
+        org.apache.flink.table.api.Schema.Builder builder =
+                org.apache.flink.table.api.Schema.newBuilder();
 
         for (ColumnSchema column : schema.getColumns()) {
             DataType flinkType =
                     KuduTypeUtils.toFlinkType(column.getType(), column.getTypeAttributes())
                             .nullable();
-            builder.field(column.getName(), flinkType);
+            builder.column(column.getName(), flinkType);
         }
 
         return builder.build();
     }
 
     public static List<String> getPrimaryKeyColumns(
-            Map<String, String> tableProperties, TableSchema tableSchema) {
-        return tableProperties.containsKey(
-                        KuduDynamicTableSourceSinkFactory.KUDU_PRIMARY_KEY_COLS.key())
-                ? Arrays.asList(
-                        tableProperties
-                                .get(KuduDynamicTableSourceSinkFactory.KUDU_PRIMARY_KEY_COLS.key())
-                                .split(","))
-                : tableSchema.getPrimaryKey().get().getColumns();
+            Map<String, String> tableProperties, ResolvedSchema schema) {
+        return tableProperties.containsKey(KUDU_PRIMARY_KEY_COLS.key())
+                ? Arrays.asList(tableProperties.get(KUDU_PRIMARY_KEY_COLS.key()).split(","))
+                : schema.getPrimaryKey().get().getColumns();
     }
 
     public static List<String> getHashColumns(Map<String, String> tableProperties) {
-        return Arrays.asList(
-                tableProperties
-                        .get(KuduDynamicTableSourceSinkFactory.KUDU_HASH_COLS.key())
-                        .split(","));
-    }
-
-    public static TableSchema getSchemaWithSqlTimestamp(TableSchema schema) {
-        TableSchema.Builder builder = new TableSchema.Builder();
-        TableSchemaUtils.getPhysicalSchema(schema)
-                .getTableColumns()
-                .forEach(
-                        tableColumn -> {
-                            if (tableColumn.getType().getLogicalType() instanceof TimestampType) {
-                                builder.field(
-                                        tableColumn.getName(),
-                                        tableColumn.getType().bridgedTo(Timestamp.class));
-                            } else {
-                                builder.field(tableColumn.getName(), tableColumn.getType());
-                            }
-                        });
-        return builder.build();
+        return Arrays.asList(tableProperties.get(KUDU_HASH_COLS.key()).split(","));
     }
 
     /** Converts Flink Expression to KuduFilterInfo. */
@@ -196,7 +167,7 @@ public class KuduTableUtils {
             } else if (children.size() == 2
                     && !functionDefinition.equals(BuiltInFunctionDefinitions.OR)) {
                 return convertBinaryComparison(functionDefinition, children);
-            } else if (children.size() > 0
+            } else if (!children.isEmpty()
                     && functionDefinition.equals(BuiltInFunctionDefinitions.OR)) {
                 return convertIsInExpression(children);
             }

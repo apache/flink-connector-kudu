@@ -44,8 +44,16 @@ public abstract class AbstractSingleOperationMapper<T> implements KuduOperationM
     protected final String[] columnNames;
     private final KuduOperation operation;
 
+    protected AbstractSingleOperationMapper(List<String> columnNames) {
+        this(columnNames, null);
+    }
+
     protected AbstractSingleOperationMapper(String[] columnNames) {
         this(columnNames, null);
+    }
+
+    public AbstractSingleOperationMapper(List<String> columnNames, KuduOperation operation) {
+        this(columnNames.toArray(new String[0]), operation);
     }
 
     public AbstractSingleOperationMapper(String[] columnNames, KuduOperation operation) {

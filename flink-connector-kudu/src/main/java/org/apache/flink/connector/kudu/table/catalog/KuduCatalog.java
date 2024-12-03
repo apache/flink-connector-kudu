@@ -16,21 +16,21 @@
  * limitations under the License.
  */
 
-package org.apache.flink.connector.kudu.table.dynamic.catalog;
+package org.apache.flink.connector.kudu.table.catalog;
 
 import org.apache.flink.connector.kudu.connector.KuduTableInfo;
 import org.apache.flink.connector.kudu.table.AbstractReadOnlyCatalog;
-import org.apache.flink.connector.kudu.table.dynamic.KuduDynamicTableSourceSinkFactory;
+import org.apache.flink.connector.kudu.table.KuduDynamicTableFactory;
 import org.apache.flink.connector.kudu.table.utils.KuduTableUtils;
-import org.apache.flink.table.api.TableSchema;
 import org.apache.flink.table.catalog.CatalogBaseTable;
 import org.apache.flink.table.catalog.CatalogDatabase;
 import org.apache.flink.table.catalog.CatalogDatabaseImpl;
 import org.apache.flink.table.catalog.CatalogFunction;
 import org.apache.flink.table.catalog.CatalogPartitionSpec;
 import org.apache.flink.table.catalog.CatalogTable;
-import org.apache.flink.table.catalog.CatalogTableImpl;
 import org.apache.flink.table.catalog.ObjectPath;
+import org.apache.flink.table.catalog.ResolvedCatalogBaseTable;
+import org.apache.flink.table.catalog.ResolvedSchema;
 import org.apache.flink.table.catalog.exceptions.CatalogException;
 import org.apache.flink.table.catalog.exceptions.DatabaseNotExistException;
 import org.apache.flink.table.catalog.exceptions.FunctionNotExistException;
@@ -47,12 +47,12 @@ import org.apache.kudu.client.AlterTableOptions;
 import org.apache.kudu.client.KuduClient;
 import org.apache.kudu.client.KuduException;
 import org.apache.kudu.client.KuduTable;
+import org.apache.kudu.shaded.com.google.common.collect.ImmutableSet;
 import org.apache.kudu.shaded.com.google.common.collect.Lists;
 import org.apache.kudu.shaded.com.google.common.collect.Sets;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -62,42 +62,44 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import static org.apache.flink.connector.kudu.table.dynamic.KuduDynamicTableSourceSinkFactory.KUDU_HASH_COLS;
-import static org.apache.flink.connector.kudu.table.dynamic.KuduDynamicTableSourceSinkFactory.KUDU_HASH_PARTITION_NUMS;
-import static org.apache.flink.connector.kudu.table.dynamic.KuduDynamicTableSourceSinkFactory.KUDU_PRIMARY_KEY_COLS;
-import static org.apache.flink.connector.kudu.table.dynamic.KuduDynamicTableSourceSinkFactory.KUDU_REPLICAS;
+import static org.apache.flink.connector.kudu.table.KuduCommonOptions.KUDU_MASTERS;
+import static org.apache.flink.connector.kudu.table.KuduDynamicTableOptions.KUDU_HASH_COLS;
+import static org.apache.flink.connector.kudu.table.KuduDynamicTableOptions.KUDU_HASH_PARTITION_NUMS;
+import static org.apache.flink.connector.kudu.table.KuduDynamicTableOptions.KUDU_PRIMARY_KEY_COLS;
+import static org.apache.flink.connector.kudu.table.KuduDynamicTableOptions.KUDU_REPLICAS;
+import static org.apache.flink.connector.kudu.table.KuduDynamicTableOptions.KUDU_TABLE;
 import static org.apache.flink.util.Preconditions.checkArgument;
 import static org.apache.flink.util.Preconditions.checkNotNull;
 
 /** Catalog for reading and creating Kudu tables. */
-public class KuduDynamicCatalog extends AbstractReadOnlyCatalog {
+public class KuduCatalog extends AbstractReadOnlyCatalog {
 
-    private static final Logger LOG = LoggerFactory.getLogger(KuduDynamicCatalog.class);
-    private final KuduDynamicTableSourceSinkFactory tableFactory =
-            new KuduDynamicTableSourceSinkFactory();
+    private static final Logger LOG = LoggerFactory.getLogger(KuduCatalog.class);
+    private final KuduDynamicTableFactory tableFactory = new KuduDynamicTableFactory();
     private final String kuduMasters;
     private final KuduClient kuduClient;
 
     /**
-     * Create a new {@link KuduDynamicCatalog} with the specified catalog name and kudu master
-     * addresses.
+     * Create a new {@link KuduCatalog} with the specified kudu master addresses.
      *
-     * @param catalogName Name of the catalog (used by the table environment)
      * @param kuduMasters Connection address to Kudu
      */
-    public KuduDynamicCatalog(String catalogName, String kuduMasters) {
-        super(catalogName, "default_database");
-        this.kuduMasters = kuduMasters;
-        this.kuduClient = createClient();
+    public KuduCatalog(String kuduMasters) {
+        this("kudu", "default", kuduMasters);
     }
 
     /**
-     * Create a new {@link KuduDynamicCatalog} with the specified kudu master addresses.
+     * Create a new {@link KuduCatalog} with the specified catalog name, default database, and kudu
+     * master addresses.
      *
+     * @param catalogName Name of the catalog (used by the table environment)
+     * @param defaultDatabase Default Kudu database name
      * @param kuduMasters Connection address to Kudu
      */
-    public KuduDynamicCatalog(String kuduMasters) {
-        this("kudu", kuduMasters);
+    public KuduCatalog(String catalogName, String defaultDatabase, String kuduMasters) {
+        super(catalogName, defaultDatabase);
+        this.kuduMasters = kuduMasters;
+        this.kuduClient = createClient();
     }
 
     @Override
@@ -105,7 +107,7 @@ public class KuduDynamicCatalog extends AbstractReadOnlyCatalog {
         return Optional.of(getKuduTableFactory());
     }
 
-    public KuduDynamicTableSourceSinkFactory getKuduTableFactory() {
+    public KuduDynamicTableFactory getKuduTableFactory() {
         return tableFactory;
     }
 
@@ -171,15 +173,11 @@ public class KuduDynamicCatalog extends AbstractReadOnlyCatalog {
 
         try {
             KuduTable kuduTable = kuduClient.openTable(tableName);
-            // fixme base on TableSchema, TableSchema needs to be upgraded to ResolvedSchema
-            CatalogTableImpl table =
-                    new CatalogTableImpl(
-                            KuduTableUtils.kuduToFlinkSchema(kuduTable.getSchema()),
-                            createTableProperties(
-                                    tableName, kuduTable.getSchema().getPrimaryKeyColumns()),
-                            tableName);
-
-            return table;
+            return CatalogTable.of(
+                    KuduTableUtils.kuduToFlinkSchema(kuduTable.getSchema()),
+                    null,
+                    Collections.emptyList(),
+                    createTableProperties(tableName, kuduTable.getSchema().getPrimaryKeyColumns()));
         } catch (KuduException e) {
             throw new CatalogException(e);
         }
@@ -188,13 +186,13 @@ public class KuduDynamicCatalog extends AbstractReadOnlyCatalog {
     protected Map<String, String> createTableProperties(
             String tableName, List<ColumnSchema> primaryKeyColumns) {
         Map<String, String> props = new HashMap<>();
-        props.put(KuduDynamicTableSourceSinkFactory.KUDU_MASTERS.key(), kuduMasters);
+        props.put(KUDU_MASTERS.key(), kuduMasters);
+        props.put(KUDU_TABLE.key(), tableName);
         String primaryKeyNames =
                 primaryKeyColumns.stream()
                         .map(ColumnSchema::getName)
                         .collect(Collectors.joining(","));
         props.put(KUDU_PRIMARY_KEY_COLS.key(), primaryKeyNames);
-        props.put(KuduDynamicTableSourceSinkFactory.KUDU_TABLE.key(), tableName);
         return props;
     }
 
@@ -230,6 +228,8 @@ public class KuduDynamicCatalog extends AbstractReadOnlyCatalog {
 
     public void createTable(KuduTableInfo tableInfo, boolean ignoreIfExists)
             throws CatalogException, TableAlreadyExistException {
+        checkNotNull(tableInfo);
+
         ObjectPath path = getObjectPath(tableInfo.getName());
         if (tableExists(path)) {
             if (ignoreIfExists) {
@@ -250,38 +250,38 @@ public class KuduDynamicCatalog extends AbstractReadOnlyCatalog {
     @Override
     public void createTable(ObjectPath tablePath, CatalogBaseTable table, boolean ignoreIfExists)
             throws TableAlreadyExistException {
+        checkNotNull(tablePath, "Table path must be provided.");
+        checkNotNull(table, "Table must be provided.");
+        checkArgument(table instanceof ResolvedCatalogBaseTable, "Table must be resolved.");
+
         Map<String, String> tableProperties = table.getOptions();
-        TableSchema tableSchema = table.getSchema();
+        ResolvedSchema schema = ((ResolvedCatalogBaseTable<?>) table).getResolvedSchema();
 
         Set<String> optionalProperties =
-                new HashSet<>(
-                        Arrays.asList(
-                                KUDU_REPLICAS.key(),
-                                KUDU_HASH_PARTITION_NUMS.key(),
-                                KUDU_HASH_COLS.key()));
-        Set<String> requiredProperties = new HashSet<>();
+                ImmutableSet.of(
+                        KUDU_REPLICAS.key(), KUDU_HASH_PARTITION_NUMS.key(), KUDU_HASH_COLS.key());
 
-        if (!tableSchema.getPrimaryKey().isPresent()) {
+        Set<String> requiredProperties = new HashSet<>();
+        if (!schema.getPrimaryKey().isPresent()) {
             requiredProperties.add(KUDU_PRIMARY_KEY_COLS.key());
         }
 
         if (!tableProperties.keySet().containsAll(requiredProperties)) {
             throw new CatalogException(
                     "Missing required property. The following properties must be provided: "
-                            + requiredProperties.toString());
+                            + requiredProperties);
         }
 
         Set<String> permittedProperties = Sets.union(requiredProperties, optionalProperties);
         if (!permittedProperties.containsAll(tableProperties.keySet())) {
             throw new CatalogException(
                     "Unpermitted properties were given. The following properties are allowed:"
-                            + permittedProperties.toString());
+                            + permittedProperties);
         }
 
         String tableName = tablePath.getObjectName();
-
         KuduTableInfo tableInfo =
-                KuduTableUtils.createTableInfo(tableName, tableSchema, tableProperties);
+                KuduTableUtils.createTableInfo(tableName, schema, tableProperties);
 
         createTable(tableInfo, ignoreIfExists);
     }

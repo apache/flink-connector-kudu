@@ -15,13 +15,13 @@
  * limitations under the License.
  */
 
-package org.apache.flink.connector.kudu.table.dynamic;
+package org.apache.flink.connector.kudu.table;
 
 import org.apache.flink.connector.kudu.connector.KuduTableInfo;
 import org.apache.flink.connector.kudu.connector.writer.KuduWriterConfig;
 import org.apache.flink.connector.kudu.connector.writer.RowDataUpsertOperationMapper;
 import org.apache.flink.connector.kudu.sink.KuduSink;
-import org.apache.flink.table.api.TableSchema;
+import org.apache.flink.table.catalog.ResolvedSchema;
 import org.apache.flink.table.connector.ChangelogMode;
 import org.apache.flink.table.connector.sink.DynamicTableSink;
 import org.apache.flink.table.connector.sink.SinkV2Provider;
@@ -34,16 +34,16 @@ import java.util.Objects;
 /** A {@link KuduDynamicTableSink} for Kudu. */
 public class KuduDynamicTableSink implements DynamicTableSink {
     private final KuduWriterConfig.Builder writerConfigBuilder;
-    private final TableSchema flinkSchema;
     private final KuduTableInfo tableInfo;
+    private final ResolvedSchema flinkSchema;
 
     public KuduDynamicTableSink(
             KuduWriterConfig.Builder writerConfigBuilder,
-            TableSchema flinkSchema,
-            KuduTableInfo tableInfo) {
+            KuduTableInfo tableInfo,
+            ResolvedSchema flinkSchema) {
         this.writerConfigBuilder = writerConfigBuilder;
-        this.flinkSchema = flinkSchema;
         this.tableInfo = tableInfo;
+        this.flinkSchema = flinkSchema;
     }
 
     @Override
@@ -59,7 +59,7 @@ public class KuduDynamicTableSink implements DynamicTableSink {
     private void validatePrimaryKey(ChangelogMode requestedMode) {
         Preconditions.checkState(
                 ChangelogMode.insertOnly().equals(requestedMode)
-                        || this.tableInfo.getSchema().getPrimaryKeyColumnCount() != 0,
+                        || tableInfo.getSchema().getPrimaryKeyColumnCount() != 0,
                 "please declare primary key for sink table when query contains update/delete record.");
     }
 
@@ -76,7 +76,7 @@ public class KuduDynamicTableSink implements DynamicTableSink {
 
     @Override
     public DynamicTableSink copy() {
-        return new KuduDynamicTableSink(this.writerConfigBuilder, this.flinkSchema, this.tableInfo);
+        return new KuduDynamicTableSink(writerConfigBuilder, tableInfo, flinkSchema);
     }
 
     @Override

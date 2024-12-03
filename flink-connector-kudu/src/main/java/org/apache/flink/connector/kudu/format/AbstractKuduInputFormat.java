@@ -30,7 +30,7 @@ import org.apache.flink.connector.kudu.connector.reader.KuduInputSplit;
 import org.apache.flink.connector.kudu.connector.reader.KuduReader;
 import org.apache.flink.connector.kudu.connector.reader.KuduReaderConfig;
 import org.apache.flink.connector.kudu.connector.reader.KuduReaderIterator;
-import org.apache.flink.connector.kudu.table.dynamic.catalog.KuduDynamicCatalog;
+import org.apache.flink.connector.kudu.table.catalog.KuduCatalog;
 import org.apache.flink.core.io.InputSplitAssigner;
 
 import org.apache.kudu.client.KuduException;
@@ -48,9 +48,8 @@ import static org.apache.flink.util.Preconditions.checkNotNull;
  * KuduTableInfo}) in both batch and stream programs. Rows of the Kudu table are mapped to {@link T}
  * instances that can converted to other data types by the user later if necessary.
  *
- * <p>For programmatic access to the schema of the input rows users can use the {@link
- * KuduDynamicCatalog} or overwrite the column order manually by providing a list of projected
- * column names.
+ * <p>For programmatic access to the schema of the input rows users can use the {@link KuduCatalog}
+ * or overwrite the column order manually by providing a list of projected column names.
  */
 @PublicEvolving
 public abstract class AbstractKuduInputFormat<T> extends RichInputFormat<T, KuduInputSplit>

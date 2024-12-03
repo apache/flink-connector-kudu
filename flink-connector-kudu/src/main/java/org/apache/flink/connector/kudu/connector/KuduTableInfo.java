@@ -39,7 +39,7 @@ import static org.apache.flink.util.Preconditions.checkNotNull;
 @PublicEvolving
 public class KuduTableInfo implements Serializable {
 
-    private String name;
+    private final String name;
     private CreateTableOptionsFactory createTableOptionsFactory = null;
     private ColumnSchemasFactory schemasFactory = null;
 

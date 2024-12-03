@@ -16,7 +16,7 @@
  * limitations under the License.
  */
 
-package org.apache.flink.connector.kudu.table.dynamic.catalog;
+package org.apache.flink.connector.kudu.table.catalog;
 
 import org.apache.flink.annotation.Internal;
 import org.apache.flink.configuration.ConfigOption;
@@ -24,21 +24,18 @@ import org.apache.flink.table.catalog.Catalog;
 import org.apache.flink.table.factories.CatalogFactory;
 import org.apache.flink.table.factories.FactoryUtil;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.apache.kudu.shaded.com.google.common.collect.Sets;
 
-import java.util.HashSet;
 import java.util.Set;
 
-import static org.apache.flink.connector.kudu.table.dynamic.KuduDynamicTableSourceSinkFactory.IDENTIFIER;
-import static org.apache.flink.connector.kudu.table.dynamic.KuduDynamicTableSourceSinkFactory.KUDU_MASTERS;
+import static org.apache.flink.connector.kudu.table.KuduCommonOptions.KUDU_MASTERS;
+import static org.apache.flink.connector.kudu.table.catalog.KuduCatalogOptions.DEFAULT_DATABASE;
+import static org.apache.flink.connector.kudu.table.catalog.KuduCatalogOptions.IDENTIFIER;
 import static org.apache.flink.table.factories.FactoryUtil.PROPERTY_VERSION;
 
-/** Factory for {@link KuduDynamicCatalog}. */
+/** Factory for {@link KuduCatalog}. */
 @Internal
 public class KuduCatalogFactory implements CatalogFactory {
-
-    private static final Logger LOG = LoggerFactory.getLogger(KuduCatalogFactory.class);
 
     @Override
     public String factoryIdentifier() {
@@ -46,17 +43,13 @@ public class KuduCatalogFactory implements CatalogFactory {
     }
 
     @Override
-    public Set<ConfigOption<?>> optionalOptions() {
-        final Set<ConfigOption<?>> options = new HashSet<>();
-        options.add(PROPERTY_VERSION);
-        return options;
+    public Set<ConfigOption<?>> requiredOptions() {
+        return Sets.newHashSet(KUDU_MASTERS);
     }
 
     @Override
-    public Set<ConfigOption<?>> requiredOptions() {
-        final Set<ConfigOption<?>> options = new HashSet<>();
-        options.add(KUDU_MASTERS);
-        return options;
+    public Set<ConfigOption<?>> optionalOptions() {
+        return Sets.newHashSet(DEFAULT_DATABASE, PROPERTY_VERSION);
     }
 
     @Override
@@ -64,6 +57,10 @@ public class KuduCatalogFactory implements CatalogFactory {
         final FactoryUtil.CatalogFactoryHelper helper =
                 FactoryUtil.createCatalogFactoryHelper(this, context);
         helper.validate();
-        return new KuduDynamicCatalog(context.getName(), helper.getOptions().get(KUDU_MASTERS));
+
+        return new KuduCatalog(
+                context.getName(),
+                helper.getOptions().get(DEFAULT_DATABASE),
+                helper.getOptions().get(KUDU_MASTERS));
     }
 }

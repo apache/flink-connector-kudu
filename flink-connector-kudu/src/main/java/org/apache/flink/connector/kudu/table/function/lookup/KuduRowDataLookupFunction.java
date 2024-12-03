@@ -29,107 +29,74 @@ import org.apache.flink.connector.kudu.connector.reader.KuduReaderIterator;
 import org.apache.flink.table.data.GenericRowData;
 import org.apache.flink.table.data.RowData;
 import org.apache.flink.table.functions.FunctionContext;
-import org.apache.flink.table.functions.TableFunction;
+import org.apache.flink.table.functions.LookupFunction;
+import org.apache.flink.util.CollectionUtil;
 
-import org.apache.commons.collections.CollectionUtils;
-import org.apache.commons.compress.utils.Lists;
-import org.apache.commons.lang3.ArrayUtils;
-import org.apache.kudu.shaded.com.google.common.cache.Cache;
-import org.apache.kudu.shaded.com.google.common.cache.CacheBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
-import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 /** LookupFunction based on the RowData object type. */
-public class KuduRowDataLookupFunction extends TableFunction<RowData> {
+public class KuduRowDataLookupFunction extends LookupFunction {
     private static final long serialVersionUID = 1L;
     private static final Logger LOG = LoggerFactory.getLogger(KuduRowDataLookupFunction.class);
 
     private final KuduTableInfo tableInfo;
     private final KuduReaderConfig kuduReaderConfig;
     private final String[] keyNames;
-    private final String[] projectedFields;
-    private final long cacheMaxSize;
-    private final long cacheExpireMs;
+    private final List<String> projectedFields;
     private final int maxRetryTimes;
     private final RowResultConverter<RowData> convertor;
 
-    private transient Cache<RowData, List<RowData>> cache;
     private transient KuduReader<RowData> kuduReader;
 
-    private KuduRowDataLookupFunction(
+    public KuduRowDataLookupFunction(
             String[] keyNames,
             KuduTableInfo tableInfo,
             KuduReaderConfig kuduReaderConfig,
-            String[] projectedFields,
-            KuduLookupOptions kuduLookupOptions) {
+            List<String> projectedFields) {
+        this(keyNames, tableInfo, kuduReaderConfig, projectedFields, 1);
+    }
+
+    public KuduRowDataLookupFunction(
+            String[] keyNames,
+            KuduTableInfo tableInfo,
+            KuduReaderConfig kuduReaderConfig,
+            List<String> projectedFields,
+            int maxRetryTimes) {
         this.tableInfo = tableInfo;
-        this.convertor = new RowResultRowDataConverter();
         this.projectedFields = projectedFields;
         this.keyNames = keyNames;
         this.kuduReaderConfig = kuduReaderConfig;
-        this.cacheMaxSize = kuduLookupOptions.getCacheMaxSize();
-        this.cacheExpireMs = kuduLookupOptions.getCacheExpireMs();
-        this.maxRetryTimes = kuduLookupOptions.getMaxRetryTimes();
+        this.maxRetryTimes = maxRetryTimes;
+        convertor = new RowResultRowDataConverter();
     }
 
-    public RowData buildCacheKey(Object... keys) {
-        return GenericRowData.of(keys);
-    }
-
-    /**
-     * invoke entry point of lookup function.
-     *
-     * @param keys join keys
-     */
-    public void eval(Object... keys) {
-        if (keys.length != keyNames.length) {
-            throw new RuntimeException("The join keys are of unequal lengths");
-        }
-        // cache key
-        RowData keyRow = buildCacheKey(keys);
-        if (this.cache != null) {
-            List<RowData> cacheRows = this.cache.getIfPresent(keyRow);
-            if (CollectionUtils.isNotEmpty(cacheRows)) {
-                for (RowData cacheRow : cacheRows) {
-                    collect(cacheRow);
-                }
-                return;
-            }
-        }
-
+    @Override
+    public Collection<RowData> lookup(RowData keyRow) {
         for (int retry = 1; retry <= maxRetryTimes; retry++) {
             try {
-                List<KuduFilterInfo> kuduFilterInfos = buildKuduFilterInfo(keys);
+                List<KuduFilterInfo> kuduFilterInfos = buildKuduFilterInfo((GenericRowData) keyRow);
                 this.kuduReader.setTableFilters(kuduFilterInfos);
                 KuduInputSplit[] inputSplits = kuduReader.createInputSplits(1);
                 ArrayList<RowData> rows = new ArrayList<>();
                 for (KuduInputSplit inputSplit : inputSplits) {
                     KuduReaderIterator<RowData> scanner =
                             kuduReader.scanner(inputSplit.getScanToken());
-                    // not use cache
-                    if (cache == null) {
-                        while (scanner.hasNext()) {
-                            collect(scanner.next());
-                        }
-                    } else {
-                        while (scanner.hasNext()) {
-                            RowData row = scanner.next();
-                            rows.add(row);
-                            collect(row);
-                        }
-                        rows.trimToSize();
+                    while (scanner.hasNext()) {
+                        RowData row = scanner.next();
+                        rows.add(row);
                     }
                 }
-                if (cache != null) {
-                    cache.put(keyRow, rows);
-                }
-                break;
+                rows.trimToSize();
+                return rows;
             } catch (Exception e) {
                 LOG.error(String.format("Kudu scan error, retry times = %d", retry), e);
                 if (retry >= maxRetryTimes) {
@@ -142,16 +109,8 @@ public class KuduRowDataLookupFunction extends TableFunction<RowData> {
                 }
             }
         }
-    }
 
-    private List<KuduFilterInfo> buildKuduFilterInfo(Object... keyValS) {
-        List<KuduFilterInfo> kuduFilterInfos = Lists.newArrayList();
-        for (int i = 0; i < keyNames.length; i++) {
-            KuduFilterInfo kuduFilterInfo =
-                    KuduFilterInfo.Builder.create(keyNames[i]).equalTo(keyValS[i]).build();
-            kuduFilterInfos.add(kuduFilterInfo);
-        }
-        return kuduFilterInfos;
+        return Collections.emptyList();
     }
 
     @Override
@@ -162,14 +121,7 @@ public class KuduRowDataLookupFunction extends TableFunction<RowData> {
                     new KuduReader<>(this.tableInfo, this.kuduReaderConfig, this.convertor);
             // build kudu cache
             this.kuduReader.setTableProjections(
-                    ArrayUtils.isNotEmpty(projectedFields) ? Arrays.asList(projectedFields) : null);
-            this.cache =
-                    this.cacheMaxSize == -1 || this.cacheExpireMs == -1
-                            ? null
-                            : CacheBuilder.newBuilder()
-                                    .expireAfterWrite(this.cacheExpireMs, TimeUnit.MILLISECONDS)
-                                    .maximumSize(this.cacheMaxSize)
-                                    .build();
+                    CollectionUtil.isNullOrEmpty(projectedFields) ? null : projectedFields);
         } catch (Exception ioe) {
             LOG.error("Exception while creating connection to Kudu.", ioe);
             throw new RuntimeException("Cannot create connection to Kudu.", ioe);
@@ -178,62 +130,24 @@ public class KuduRowDataLookupFunction extends TableFunction<RowData> {
 
     @Override
     public void close() {
-        if (null != this.kuduReader) {
+        if (kuduReader != null) {
             try {
-                this.kuduReader.close();
-                if (cache != null) {
-                    this.cache.cleanUp();
-                    // help gc
-                    this.cache = null;
-                }
-                this.kuduReader = null;
+                kuduReader.close();
+                kuduReader = null;
             } catch (IOException e) {
                 // ignore exception when close.
-                LOG.warn("exception when close table", e);
+                LOG.warn("Failed to close Kudu table reader", e);
             }
         }
     }
 
-    /** Builder for KuduRowDataLookupFunction. */
-    public static class Builder {
-        private KuduTableInfo tableInfo;
-        private KuduReaderConfig kuduReaderConfig;
-        private String[] keyNames;
-        private String[] projectedFields;
-        private KuduLookupOptions kuduLookupOptions;
-
-        public static Builder options() {
-            return new Builder();
-        }
-
-        public Builder tableInfo(KuduTableInfo tableInfo) {
-            this.tableInfo = tableInfo;
-            return this;
-        }
-
-        public Builder kuduReaderConfig(KuduReaderConfig kuduReaderConfig) {
-            this.kuduReaderConfig = kuduReaderConfig;
-            return this;
-        }
-
-        public Builder keyNames(String[] keyNames) {
-            this.keyNames = keyNames;
-            return this;
-        }
-
-        public Builder projectedFields(String[] projectedFields) {
-            this.projectedFields = projectedFields;
-            return this;
-        }
-
-        public Builder kuduLookupOptions(KuduLookupOptions kuduLookupOptions) {
-            this.kuduLookupOptions = kuduLookupOptions;
-            return this;
-        }
-
-        public KuduRowDataLookupFunction build() {
-            return new KuduRowDataLookupFunction(
-                    keyNames, tableInfo, kuduReaderConfig, projectedFields, kuduLookupOptions);
-        }
+    private List<KuduFilterInfo> buildKuduFilterInfo(GenericRowData keyRow) {
+        return IntStream.range(0, keyNames.length)
+                .mapToObj(
+                        i ->
+                                KuduFilterInfo.Builder.create(keyNames[i])
+                                        .equalTo(keyRow.getField(i))
+                                        .build())
+                .collect(Collectors.toList());
     }
 }

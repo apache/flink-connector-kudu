@@ -15,45 +15,41 @@
  * limitations under the License.
  */
 
-package org.apache.flink.connector.kudu.table.dynamic;
+package org.apache.flink.connector.kudu.table;
 
 import org.apache.flink.connector.kudu.connector.KuduFilterInfo;
 import org.apache.flink.connector.kudu.connector.KuduTableInfo;
 import org.apache.flink.connector.kudu.connector.converter.RowResultRowDataConverter;
 import org.apache.flink.connector.kudu.connector.reader.KuduReaderConfig;
 import org.apache.flink.connector.kudu.format.KuduRowDataInputFormat;
-import org.apache.flink.connector.kudu.table.function.lookup.KuduLookupOptions;
 import org.apache.flink.connector.kudu.table.function.lookup.KuduRowDataLookupFunction;
 import org.apache.flink.connector.kudu.table.utils.KuduTableUtils;
-import org.apache.flink.table.api.TableSchema;
 import org.apache.flink.table.connector.ChangelogMode;
+import org.apache.flink.table.connector.Projection;
 import org.apache.flink.table.connector.source.DynamicTableSource;
 import org.apache.flink.table.connector.source.InputFormatProvider;
 import org.apache.flink.table.connector.source.LookupTableSource;
 import org.apache.flink.table.connector.source.ScanTableSource;
-import org.apache.flink.table.connector.source.TableFunctionProvider;
 import org.apache.flink.table.connector.source.abilities.SupportsFilterPushDown;
 import org.apache.flink.table.connector.source.abilities.SupportsLimitPushDown;
 import org.apache.flink.table.connector.source.abilities.SupportsProjectionPushDown;
+import org.apache.flink.table.connector.source.lookup.LookupFunctionProvider;
+import org.apache.flink.table.connector.source.lookup.PartialCachingLookupProvider;
+import org.apache.flink.table.connector.source.lookup.cache.LookupCache;
 import org.apache.flink.table.expressions.ResolvedExpression;
 import org.apache.flink.table.types.DataType;
-import org.apache.flink.table.types.FieldsDataType;
-import org.apache.flink.table.types.logical.RowType;
-import org.apache.flink.table.types.utils.DataTypeUtils;
-import org.apache.flink.util.Preconditions;
 
 import org.apache.commons.collections.CollectionUtils;
-import org.apache.kudu.shaded.com.google.common.collect.Lists;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
-import java.util.Arrays;
+import javax.annotation.Nullable;
+
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 
-import static org.apache.flink.table.utils.TableSchemaUtils.containsPhysicalColumnsOnly;
+import static org.apache.flink.util.Preconditions.checkArgument;
 
 /** A {@link DynamicTableSource} for Kudu. */
 public class KuduDynamicTableSource
@@ -63,55 +59,48 @@ public class KuduDynamicTableSource
                 LookupTableSource,
                 SupportsFilterPushDown {
 
-    private static final Logger LOG = LoggerFactory.getLogger(KuduDynamicTableSource.class);
     private final KuduTableInfo tableInfo;
-    private final KuduLookupOptions kuduLookupOptions;
-    private final KuduRowDataInputFormat kuduRowDataInputFormat;
-    private final transient List<KuduFilterInfo> predicates = Lists.newArrayList();
+    private final int lookupMaxRetryTimes;
+    @Nullable private final LookupCache cache;
+    private final transient List<KuduFilterInfo> predicates = new ArrayList<>();
+
     private KuduReaderConfig.Builder configBuilder;
-    private TableSchema physicalSchema;
-    private String[] projectedFields;
+    private DataType physicalRowDataType;
     private transient List<ResolvedExpression> filters;
 
     public KuduDynamicTableSource(
             KuduReaderConfig.Builder configBuilder,
             KuduTableInfo tableInfo,
-            TableSchema physicalSchema,
-            String[] projectedFields,
-            KuduLookupOptions kuduLookupOptions) {
+            DataType physicalRowDataType,
+            int lookupMaxRetryTimes,
+            @Nullable LookupCache cache) {
         this.configBuilder = configBuilder;
         this.tableInfo = tableInfo;
-        this.physicalSchema = physicalSchema;
-        this.projectedFields = projectedFields;
-        this.kuduRowDataInputFormat =
-                new KuduRowDataInputFormat(
-                        configBuilder.build(),
-                        new RowResultRowDataConverter(),
-                        tableInfo,
-                        predicates,
-                        projectedFields == null ? null : Lists.newArrayList(projectedFields));
-        this.kuduLookupOptions = kuduLookupOptions;
+        this.physicalRowDataType = physicalRowDataType;
+        this.lookupMaxRetryTimes = lookupMaxRetryTimes;
+        this.cache = cache;
     }
 
     @Override
     public LookupRuntimeProvider getLookupRuntimeProvider(LookupContext context) {
-        int keysLen = context.getKeys().length;
-        String[] keyNames = new String[keysLen];
-        for (int i = 0; i < keyNames.length; ++i) {
+        String[] keyNames = new String[context.getKeys().length];
+        for (int i = 0; i < keyNames.length; i++) {
             int[] innerKeyArr = context.getKeys()[i];
-            Preconditions.checkArgument(
-                    innerKeyArr.length == 1, "Kudu only support non-nested look up keys");
-            keyNames[i] = this.physicalSchema.getFieldNames()[innerKeyArr[0]];
+            checkArgument(innerKeyArr.length == 1, "Kudu only supports non-nested lookup keys");
+            keyNames[i] = DataType.getFieldNames(physicalRowDataType).get(innerKeyArr[0]);
         }
-        KuduRowDataLookupFunction rowDataLookupFunction =
-                KuduRowDataLookupFunction.Builder.options()
-                        .keyNames(keyNames)
-                        .kuduReaderConfig(configBuilder.build())
-                        .projectedFields(projectedFields)
-                        .tableInfo(tableInfo)
-                        .kuduLookupOptions(kuduLookupOptions)
-                        .build();
-        return TableFunctionProvider.of(rowDataLookupFunction);
+
+        KuduRowDataLookupFunction lookupFunction =
+                new KuduRowDataLookupFunction(
+                        keyNames,
+                        tableInfo,
+                        configBuilder.build(),
+                        DataType.getFieldNames(physicalRowDataType),
+                        lookupMaxRetryTimes);
+
+        return cache == null
+                ? LookupFunctionProvider.of(lookupFunction)
+                : PartialCachingLookupProvider.of(lookupFunction, cache);
     }
 
     @Override
@@ -121,32 +110,30 @@ public class KuduDynamicTableSource
 
     @Override
     public ScanRuntimeProvider getScanRuntimeProvider(ScanContext runtimeProviderContext) {
-        if (CollectionUtils.isNotEmpty(this.filters)) {
-            for (ResolvedExpression filter : this.filters) {
+        if (CollectionUtils.isNotEmpty(filters)) {
+            for (ResolvedExpression filter : filters) {
                 Optional<KuduFilterInfo> kuduFilterInfo = KuduTableUtils.toKuduFilterInfo(filter);
                 if (kuduFilterInfo != null && kuduFilterInfo.isPresent()) {
-                    this.predicates.add(kuduFilterInfo.get());
+                    predicates.add(kuduFilterInfo.get());
                 }
             }
         }
+
         KuduRowDataInputFormat inputFormat =
                 new KuduRowDataInputFormat(
                         configBuilder.build(),
                         new RowResultRowDataConverter(),
                         tableInfo,
-                        this.predicates,
-                        projectedFields == null ? null : Lists.newArrayList(projectedFields));
+                        predicates,
+                        DataType.getFieldNames(physicalRowDataType));
+
         return InputFormatProvider.of(inputFormat);
     }
 
     @Override
     public DynamicTableSource copy() {
         return new KuduDynamicTableSource(
-                this.configBuilder,
-                this.tableInfo,
-                this.physicalSchema,
-                this.projectedFields,
-                this.kuduLookupOptions);
+                configBuilder, tableInfo, physicalRowDataType, lookupMaxRetryTimes, cache);
     }
 
     @Override
@@ -162,25 +149,7 @@ public class KuduDynamicTableSource
 
     @Override
     public void applyProjection(int[][] projectedFields, DataType producedDataType) {
-        // parser projectFields
-        this.physicalSchema = projectSchema(this.physicalSchema, projectedFields);
-        this.projectedFields = physicalSchema.getFieldNames();
-    }
-
-    private TableSchema projectSchema(TableSchema tableSchema, int[][] projectedFields) {
-        Preconditions.checkArgument(
-                containsPhysicalColumnsOnly(tableSchema),
-                "Projection is only supported for physical columns.");
-        TableSchema.Builder builder = TableSchema.builder();
-
-        FieldsDataType fields =
-                (FieldsDataType)
-                        DataTypeUtils.projectRow(tableSchema.toRowDataType(), projectedFields);
-        RowType topFields = (RowType) fields.getLogicalType();
-        for (int i = 0; i < topFields.getFieldCount(); i++) {
-            builder.field(topFields.getFieldNames().get(i), fields.getChildren().get(i));
-        }
-        return builder.build();
+        physicalRowDataType = Projection.of(projectedFields).project(physicalRowDataType);
     }
 
     @Override
@@ -194,27 +163,16 @@ public class KuduDynamicTableSource
         KuduDynamicTableSource that = (KuduDynamicTableSource) o;
         return Objects.equals(configBuilder, that.configBuilder)
                 && Objects.equals(tableInfo, that.tableInfo)
-                && Objects.equals(physicalSchema, that.physicalSchema)
-                && Arrays.equals(projectedFields, that.projectedFields)
-                && Objects.equals(kuduLookupOptions, that.kuduLookupOptions)
-                && Objects.equals(kuduRowDataInputFormat, that.kuduRowDataInputFormat)
+                && Objects.equals(cache, that.cache)
+                && Objects.equals(physicalRowDataType, that.physicalRowDataType)
                 && Objects.equals(filters, that.filters)
                 && Objects.equals(predicates, that.predicates);
     }
 
     @Override
     public int hashCode() {
-        int result =
-                Objects.hash(
-                        configBuilder,
-                        tableInfo,
-                        physicalSchema,
-                        kuduLookupOptions,
-                        kuduRowDataInputFormat,
-                        filters,
-                        predicates);
-        result = 31 * result + Arrays.hashCode(projectedFields);
-        return result;
+        return Objects.hash(
+                configBuilder, tableInfo, cache, physicalRowDataType, filters, predicates);
     }
 
     @Override

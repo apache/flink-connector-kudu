@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package org.apache.flink.connector.kudu.table.dynamic;
+package org.apache.flink.connector.kudu.table;
 
 import org.apache.flink.connector.kudu.connector.KuduTableInfo;
 import org.apache.flink.connector.kudu.connector.KuduTestBase;
@@ -31,7 +31,7 @@ import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
-/** Unit Tests for {@link KuduDynamicTableSink}. */
+/** Unit Tests for {@link org.apache.flink.connector.kudu.table.KuduDynamicTableSink}. */
 public class KuduDynamicSinkTest extends KuduTestBase {
     public static final String INPUT_TABLE = "books";
     public static StreamExecutionEnvironment env;
@@ -52,7 +52,7 @@ public class KuduDynamicSinkTest extends KuduTestBase {
     }
 
     @Test
-    public void testKuduSink() throws Exception {
+    public void testKuduSink() {
         String createSql =
                 "CREATE TABLE "
                         + INPUT_TABLE
@@ -74,7 +74,7 @@ public class KuduDynamicSinkTest extends KuduTestBase {
                         + "','kudu.flush-interval'='1000"
                         + "','kudu.operation-timeout'='500"
                         + "','kudu.ignore-not-found'='true"
-                        + "','kudu.ignore-not-found'='true'"
+                        + "','kudu.ignore-duplicate'='true'"
                         + ")";
         tEnv.executeSql(createSql);
         tEnv.executeSql(

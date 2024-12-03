@@ -29,7 +29,8 @@ import org.apache.flink.connector.kudu.connector.writer.KuduWriter;
 import org.apache.flink.connector.kudu.connector.writer.KuduWriterConfig;
 import org.apache.flink.connector.kudu.connector.writer.RowOperationMapper;
 import org.apache.flink.table.api.DataTypes;
-import org.apache.flink.table.api.TableSchema;
+import org.apache.flink.table.catalog.Column;
+import org.apache.flink.table.catalog.ResolvedSchema;
 import org.apache.flink.table.data.GenericRowData;
 import org.apache.flink.table.data.RowData;
 import org.apache.flink.table.data.StringData;
@@ -199,14 +200,13 @@ public class KuduTestBase {
                 .collect(Collectors.toList());
     }
 
-    public static TableSchema booksTableSchema() {
-        return TableSchema.builder()
-                .field("id", DataTypes.INT())
-                .field("title", DataTypes.STRING())
-                .field("author", DataTypes.STRING())
-                .field("price", DataTypes.DOUBLE())
-                .field("quantity", DataTypes.INT())
-                .build();
+    public static ResolvedSchema booksTableSchema() {
+        return ResolvedSchema.of(
+                Column.physical("id", DataTypes.INT()),
+                Column.physical("title", DataTypes.STRING()),
+                Column.physical("author", DataTypes.STRING()),
+                Column.physical("price", DataTypes.DOUBLE()),
+                Column.physical("quantity", DataTypes.INT()));
     }
 
     public static List<RowData> booksRowData() {
