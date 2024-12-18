@@ -67,7 +67,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 /** Base class for integration tests. */
 public class KuduTestBase {
 
-    private static final String DOCKER_IMAGE = "apache/kudu:1.13.0";
+    private static final String DOCKER_IMAGE = "apache/kudu:1.17.0";
     private static final Integer KUDU_MASTER_PORT = 7051;
     private static final Integer KUDU_TSERVER_PORT = 7050;
     private static final Integer NUMBER_OF_REPLICA = 3;
@@ -93,29 +93,32 @@ public class KuduTestBase {
                 new GenericContainer<>(DOCKER_IMAGE)
                         .withExposedPorts(KUDU_MASTER_PORT, 8051)
                         .withCommand("master")
+                        .withEnv("MASTER_ARGS", "--unlock_unsafe_flags")
                         .withNetwork(network)
                         .withNetworkAliases("kudu-master");
         master.start();
+        assertTrue(master.isRunning());
         masterAddress =
                 HostAndPort.fromParts(master.getHost(), master.getMappedPort(KUDU_MASTER_PORT));
 
         for (int instance = 1; instance <= NUMBER_OF_REPLICA; instance++) {
             String instanceName = "kudu-tserver-" + instance;
-            GenericContainer<?> tableServer =
+            GenericContainer<?> tabletServer =
                     new GenericContainer<>(DOCKER_IMAGE)
-                            .withExposedPorts(KUDU_TSERVER_PORT)
+                            .withExposedPorts(KUDU_TSERVER_PORT, 8050)
                             .withCommand("tserver")
-                            .withEnv("KUDU_MASTERS", "kudu-master:" + KUDU_MASTER_PORT)
+                            .withEnv("KUDU_MASTERS", "kudu-master")
                             .withEnv(
                                     "TSERVER_ARGS",
-                                    "--fs_wal_dir=/var/lib/kudu/tserver --logtostderr "
+                                    "--fs_wal_dir=/var/lib/kudu/tserver --logtostderr --unlock_unsafe_flags"
                                             + " --use_hybrid_clock=false --rpc_advertised_addresses="
                                             + instanceName)
                             .withNetwork(network)
                             .withNetworkAliases(instanceName)
                             .dependsOn(master);
-            tableServer.start();
-            tServersBuilder.add(tableServer);
+            tabletServer.start();
+            assertTrue(tabletServer.isRunning());
+            tServersBuilder.add(tabletServer);
         }
         tServers = tServersBuilder.build();
 
