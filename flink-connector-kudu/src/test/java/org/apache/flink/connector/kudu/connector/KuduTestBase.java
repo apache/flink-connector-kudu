@@ -93,7 +93,7 @@ public class KuduTestBase {
                 new GenericContainer<>(DOCKER_IMAGE)
                         .withExposedPorts(KUDU_MASTER_PORT, 8051)
                         .withCommand("master")
-                        .withEnv("MASTER_ARGS", "--unlock_unsafe_flags")
+                        .withEnv("MASTER_ARGS", "--unlock_unsafe_flags --use_hybrid_clock=true")
                         .withNetwork(network)
                         .withNetworkAliases("kudu-master");
         master.start();
@@ -111,7 +111,7 @@ public class KuduTestBase {
                             .withEnv(
                                     "TSERVER_ARGS",
                                     "--fs_wal_dir=/var/lib/kudu/tserver --logtostderr --unlock_unsafe_flags"
-                                            + " --use_hybrid_clock=false --rpc_advertised_addresses="
+                                            + " --use_hybrid_clock=true --rpc_advertised_addresses="
                                             + instanceName)
                             .withNetwork(network)
                             .withNetworkAliases(instanceName)
@@ -277,7 +277,7 @@ public class KuduTestBase {
         return masterAddress.toString();
     }
 
-    public KuduClient getClient() {
+    public static KuduClient getClient() {
         return kuduClient;
     }
 
