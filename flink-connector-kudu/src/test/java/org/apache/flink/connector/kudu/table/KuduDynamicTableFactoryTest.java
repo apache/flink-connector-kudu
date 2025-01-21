@@ -39,6 +39,7 @@ import org.apache.kudu.Type;
 import org.apache.kudu.client.KuduScanner;
 import org.apache.kudu.client.KuduTable;
 import org.apache.kudu.client.RowResult;
+import org.apache.kudu.client.SessionConfiguration;
 import org.apache.kudu.shaded.com.google.common.collect.Lists;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -207,11 +208,13 @@ public class KuduDynamicTableFactoryTest extends KuduTestBase {
         properties.put("kudu.table", "TestTable12");
         properties.put("kudu.ignore-not-found", "true");
         properties.put("kudu.ignore-duplicate", "true");
+        properties.put("kudu.flush-mode", "auto_flush_sync");
         properties.put("kudu.flush-interval", "10000");
         properties.put("kudu.max-buffer-size", "10000");
 
         KuduWriterConfig.Builder builder =
                 KuduWriterConfig.Builder.setMasters(kuduMasters)
+                        .setConsistency(SessionConfiguration.FlushMode.AUTO_FLUSH_SYNC)
                         .setFlushInterval(10000)
                         .setMaxBufferSize(10000)
                         .setIgnoreDuplicate(true)

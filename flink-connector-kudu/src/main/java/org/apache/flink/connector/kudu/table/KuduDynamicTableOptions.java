@@ -21,6 +21,8 @@ import org.apache.flink.annotation.PublicEvolving;
 import org.apache.flink.configuration.ConfigOption;
 import org.apache.flink.configuration.ConfigOptions;
 
+import org.apache.kudu.client.SessionConfiguration;
+
 import java.time.Duration;
 
 /** Kudu table options. */
@@ -52,6 +54,12 @@ public class KuduDynamicTableOptions {
                     .intType()
                     .defaultValue(1000)
                     .withDescription("kudu's max buffer size");
+
+    public static final ConfigOption<SessionConfiguration.FlushMode> KUDU_FLUSH_MODE =
+            ConfigOptions.key("kudu.flush-mode")
+                    .enumType(SessionConfiguration.FlushMode.class)
+                    .defaultValue(SessionConfiguration.FlushMode.AUTO_FLUSH_BACKGROUND)
+                    .withDescription("kudu's data flush mode");
 
     public static final ConfigOption<Duration> KUDU_FLUSH_INTERVAL =
             ConfigOptions.key("kudu.flush-interval")
