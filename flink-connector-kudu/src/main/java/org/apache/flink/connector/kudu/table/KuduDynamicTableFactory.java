@@ -42,6 +42,7 @@ import java.util.Set;
 import static org.apache.flink.connector.kudu.table.KuduCommonOptions.KUDU_MASTERS;
 import static org.apache.flink.connector.kudu.table.KuduDynamicTableOptions.IDENTIFIER;
 import static org.apache.flink.connector.kudu.table.KuduDynamicTableOptions.KUDU_FLUSH_INTERVAL;
+import static org.apache.flink.connector.kudu.table.KuduDynamicTableOptions.KUDU_FLUSH_MODE;
 import static org.apache.flink.connector.kudu.table.KuduDynamicTableOptions.KUDU_HASH_COLS;
 import static org.apache.flink.connector.kudu.table.KuduDynamicTableOptions.KUDU_HASH_PARTITION_NUMS;
 import static org.apache.flink.connector.kudu.table.KuduDynamicTableOptions.KUDU_IGNORE_DUPLICATE;
@@ -81,6 +82,7 @@ public class KuduDynamicTableFactory implements DynamicTableSourceFactory, Dynam
                 KUDU_MAX_BUFFER_SIZE,
                 KUDU_MAX_BUFFER_SIZE,
                 KUDU_OPERATION_TIMEOUT,
+                KUDU_FLUSH_MODE,
                 KUDU_FLUSH_INTERVAL,
                 KUDU_IGNORE_NOT_FOUND,
                 KUDU_IGNORE_DUPLICATE,
@@ -107,6 +109,7 @@ public class KuduDynamicTableFactory implements DynamicTableSourceFactory, Dynam
         final KuduWriterConfig.Builder configBuilder =
                 KuduWriterConfig.Builder.setMasters(config.get(KUDU_MASTERS))
                         .setOperationTimeout(config.get(KUDU_OPERATION_TIMEOUT).toMillis())
+                        .setConsistency(config.get(KUDU_FLUSH_MODE))
                         .setFlushInterval((int) config.get(KUDU_FLUSH_INTERVAL).toMillis())
                         .setMaxBufferSize(config.get(KUDU_MAX_BUFFER_SIZE))
                         .setIgnoreNotFound(config.get(KUDU_IGNORE_NOT_FOUND))
