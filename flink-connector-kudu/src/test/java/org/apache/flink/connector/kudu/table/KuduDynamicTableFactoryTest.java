@@ -76,7 +76,7 @@ public class KuduDynamicTableFactoryTest extends KuduTestBase {
     public void testMissingMasters() throws Exception {
         tableEnv.executeSql(
                 "CREATE TABLE TestTable11 (`first` STRING, `second` INT) "
-                        + "WITH ('connector'='kudu', 'kudu.table'='TestTable11')");
+                        + "WITH ('connector'='kudu', 'table-name'='TestTable11')");
         assertThrows(
                 ValidationException.class,
                 () -> tableEnv.executeSql("INSERT INTO TestTable11 values ('f', 1)"));
@@ -86,7 +86,7 @@ public class KuduDynamicTableFactoryTest extends KuduTestBase {
     public void testNonExistingTable() throws Exception {
         tableEnv.executeSql(
                 "CREATE TABLE TestTable11 (`first` STRING, `second` INT) "
-                        + "WITH ('connector'='kudu', 'kudu.table'='TestTable11', 'kudu.masters'='"
+                        + "WITH ('connector'='kudu', 'table-name'='TestTable11', 'masters'='"
                         + kuduMasters
                         + "')");
         JobClient jobClient =
@@ -103,10 +103,10 @@ public class KuduDynamicTableFactoryTest extends KuduTestBase {
     public void testCreateTable() throws Exception {
         tableEnv.executeSql(
                 "CREATE TABLE TestTable11 (`first` STRING, `second` STRING) "
-                        + "WITH ('connector'='kudu', 'kudu.table'='TestTable11', 'kudu.masters'='"
+                        + "WITH ('connector'='kudu', 'table-name'='TestTable11', 'masters'='"
                         + kuduMasters
                         + "', "
-                        + "'kudu.hash-columns'='first', 'kudu.primary-key-columns'='first')");
+                        + "'hash-columns'='first', 'primary-key-columns'='first')");
 
         tableEnv.executeSql("INSERT INTO TestTable11 values ('f', 's')")
                 .getJobClient()
@@ -123,10 +123,10 @@ public class KuduDynamicTableFactoryTest extends KuduTestBase {
         // Test it when creating the table...
         tableEnv.executeSql(
                 "CREATE TABLE TestTableTs (`first` STRING, `second` TIMESTAMP(3)) "
-                        + "WITH ('connector'='kudu', 'kudu.masters'='"
+                        + "WITH ('connector'='kudu', 'masters'='"
                         + kuduMasters
                         + "', "
-                        + "'kudu.hash-columns'='first', 'kudu.primary-key-columns'='first')");
+                        + "'hash-columns'='first', 'primary-key-columns'='first')");
         tableEnv.executeSql(
                         "INSERT INTO TestTableTs values ('f', TIMESTAMP '2020-01-01 12:12:12.123456')")
                 .getJobClient()
@@ -160,10 +160,10 @@ public class KuduDynamicTableFactoryTest extends KuduTestBase {
         // Creating a table
         tableEnv.executeSql(
                 "CREATE TABLE TestTable12 (`first` STRING, `second` STRING) "
-                        + "WITH ('connector'='kudu', 'kudu.table'='TestTable12', 'kudu.masters'='"
+                        + "WITH ('connector'='kudu', 'table-name'='TestTable12', 'masters'='"
                         + kuduMasters
                         + "', "
-                        + "'kudu.hash-columns'='first', 'kudu.primary-key-columns'='first')");
+                        + "'hash-columns'='first', 'primary-key-columns'='first')");
 
         tableEnv.executeSql("INSERT INTO TestTable12 values ('f', 's')")
                 .getJobClient()
@@ -174,7 +174,7 @@ public class KuduDynamicTableFactoryTest extends KuduTestBase {
         // Then another one in SQL that refers to the previously created one
         tableEnv.executeSql(
                 "CREATE TABLE TestTable12b (`first` STRING, `second` STRING) "
-                        + "WITH ('connector'='kudu', 'kudu.table'='TestTable12', 'kudu.masters'='"
+                        + "WITH ('connector'='kudu', 'table-name'='TestTable12', 'masters'='"
                         + kuduMasters
                         + "')");
         tableEnv.executeSql("INSERT INTO TestTable12b values ('f2','s2')")
@@ -204,13 +204,13 @@ public class KuduDynamicTableFactoryTest extends KuduTestBase {
                         Column.physical("second", DataTypes.STRING()));
         final Map<String, String> properties = new HashMap<>();
         properties.put("connector", "kudu");
-        properties.put("kudu.masters", kuduMasters);
-        properties.put("kudu.table", "TestTable12");
-        properties.put("kudu.ignore-not-found", "true");
-        properties.put("kudu.ignore-duplicate", "true");
-        properties.put("kudu.flush-mode", "auto_flush_sync");
-        properties.put("kudu.flush-interval", "10000");
-        properties.put("kudu.max-buffer-size", "10000");
+        properties.put("masters", kuduMasters);
+        properties.put("table-name", "TestTable12");
+        properties.put("sink.ignore-not-found", "true");
+        properties.put("sink.ignore-duplicate", "true");
+        properties.put("sink.flush-mode", "auto_flush_sync");
+        properties.put("sink.flush-interval", "10000");
+        properties.put("sink.max-buffer-size", "10000");
 
         KuduWriterConfig.Builder builder =
                 KuduWriterConfig.Builder.setMasters(kuduMasters)

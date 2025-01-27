@@ -64,17 +64,17 @@ public class KuduDynamicSinkTest extends KuduTestBase {
                         + "quantity int"
                         + ") WITH ("
                         + "  'connector'='kudu',"
-                        + "  'kudu.masters'='"
+                        + "  'masters'='"
                         + 123245
                         + "',"
-                        + "  'kudu.table'='"
+                        + "  'table-name'='"
                         + INPUT_TABLE
-                        + "','kudu.primary-key-columns'='id"
-                        + "','kudu.max-buffer-size'='1024"
-                        + "','kudu.flush-interval'='1000"
-                        + "','kudu.operation-timeout'='500"
-                        + "','kudu.ignore-not-found'='true"
-                        + "','kudu.ignore-duplicate'='true'"
+                        + "','primary-key-columns'='id"
+                        + "','sink.max-buffer-size'='1024"
+                        + "','sink.flush-interval'='1000ms"
+                        + "','sink.operation-timeout'='500ms"
+                        + "','sink.ignore-not-found'='true"
+                        + "','sink.ignore-duplicate'='true'"
                         + ")";
         tEnv.executeSql(createSql);
         tEnv.executeSql(

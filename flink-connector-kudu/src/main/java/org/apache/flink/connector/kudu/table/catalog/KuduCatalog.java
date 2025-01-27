@@ -62,12 +62,12 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import static org.apache.flink.connector.kudu.table.KuduCommonOptions.KUDU_MASTERS;
-import static org.apache.flink.connector.kudu.table.KuduDynamicTableOptions.KUDU_HASH_COLS;
-import static org.apache.flink.connector.kudu.table.KuduDynamicTableOptions.KUDU_HASH_PARTITION_NUMS;
-import static org.apache.flink.connector.kudu.table.KuduDynamicTableOptions.KUDU_PRIMARY_KEY_COLS;
-import static org.apache.flink.connector.kudu.table.KuduDynamicTableOptions.KUDU_REPLICAS;
-import static org.apache.flink.connector.kudu.table.KuduDynamicTableOptions.KUDU_TABLE;
+import static org.apache.flink.connector.kudu.table.KuduCommonOptions.MASTERS;
+import static org.apache.flink.connector.kudu.table.KuduDynamicTableOptions.HASH_COLS;
+import static org.apache.flink.connector.kudu.table.KuduDynamicTableOptions.HASH_PARTITION_NUMS;
+import static org.apache.flink.connector.kudu.table.KuduDynamicTableOptions.PRIMARY_KEY_COLS;
+import static org.apache.flink.connector.kudu.table.KuduDynamicTableOptions.REPLICAS;
+import static org.apache.flink.connector.kudu.table.KuduDynamicTableOptions.TABLE_NAME;
 import static org.apache.flink.util.Preconditions.checkArgument;
 import static org.apache.flink.util.Preconditions.checkNotNull;
 
@@ -186,13 +186,13 @@ public class KuduCatalog extends AbstractReadOnlyCatalog {
     protected Map<String, String> createTableProperties(
             String tableName, List<ColumnSchema> primaryKeyColumns) {
         Map<String, String> props = new HashMap<>();
-        props.put(KUDU_MASTERS.key(), kuduMasters);
-        props.put(KUDU_TABLE.key(), tableName);
+        props.put(MASTERS.key(), kuduMasters);
+        props.put(TABLE_NAME.key(), tableName);
         String primaryKeyNames =
                 primaryKeyColumns.stream()
                         .map(ColumnSchema::getName)
                         .collect(Collectors.joining(","));
-        props.put(KUDU_PRIMARY_KEY_COLS.key(), primaryKeyNames);
+        props.put(PRIMARY_KEY_COLS.key(), primaryKeyNames);
         return props;
     }
 
@@ -258,12 +258,11 @@ public class KuduCatalog extends AbstractReadOnlyCatalog {
         ResolvedSchema schema = ((ResolvedCatalogBaseTable<?>) table).getResolvedSchema();
 
         Set<String> optionalProperties =
-                ImmutableSet.of(
-                        KUDU_REPLICAS.key(), KUDU_HASH_PARTITION_NUMS.key(), KUDU_HASH_COLS.key());
+                ImmutableSet.of(REPLICAS.key(), HASH_PARTITION_NUMS.key(), HASH_COLS.key());
 
         Set<String> requiredProperties = new HashSet<>();
         if (!schema.getPrimaryKey().isPresent()) {
-            requiredProperties.add(KUDU_PRIMARY_KEY_COLS.key());
+            requiredProperties.add(PRIMARY_KEY_COLS.key());
         }
 
         if (!tableProperties.keySet().containsAll(requiredProperties)) {

@@ -69,7 +69,7 @@ public class KuduCatalogTest extends KuduTestBase {
     @Test
     public void testCreateAlterDrop() throws Exception {
         tableEnv.executeSql(
-                "CREATE TABLE TestTable1 (`first` STRING, `second` String) WITH ('kudu.hash-columns' = 'first', 'kudu.primary-key-columns' = 'first')");
+                "CREATE TABLE TestTable1 (`first` STRING, `second` String) WITH ('hash-columns' = 'first', 'primary-key-columns' = 'first')");
         tableEnv.executeSql("INSERT INTO TestTable1 VALUES ('f', 's')")
                 .getJobClient()
                 .get()
@@ -78,7 +78,7 @@ public class KuduCatalogTest extends KuduTestBase {
 
         // Add this once Primary key support has been enabled
         // tableEnv.sqlUpdate("CREATE TABLE TestTable2 (`first` STRING, `second` String, PRIMARY
-        // KEY(`first`)) WITH ('kudu.hash-columns' = 'first')");
+        // KEY(`first`)) WITH ('hash-columns' = 'first')");
         // tableEnv.sqlUpdate("INSERT INTO TestTable2 VALUES ('f', 's')");
 
         validateSingleKey("TestTable1");
@@ -94,7 +94,7 @@ public class KuduCatalogTest extends KuduTestBase {
     @Test
     public void testCreateAndInsertMultiKey() throws Exception {
         tableEnv.executeSql(
-                "CREATE TABLE TestTable3 (`first` STRING, `second` INT, third STRING) WITH ('kudu.hash-columns' = 'first,second', 'kudu.primary-key-columns' = 'first,second')");
+                "CREATE TABLE TestTable3 (`first` STRING, `second` INT, third STRING) WITH ('hash-columns' = 'first,second', 'primary-key-columns' = 'first,second')");
         tableEnv.executeSql("INSERT INTO TestTable3 VALUES ('f', 2, 't')")
                 .getJobClient()
                 .get()
@@ -107,7 +107,7 @@ public class KuduCatalogTest extends KuduTestBase {
     @Test
     public void testSourceProjection() throws Exception {
         tableEnv.executeSql(
-                "CREATE TABLE TestTable5 (`second` String, `first` STRING, `third` String) WITH ('kudu.hash-columns' = 'second', 'kudu.primary-key-columns' = 'second')");
+                "CREATE TABLE TestTable5 (`second` String, `first` STRING, `third` String) WITH ('hash-columns' = 'second', 'primary-key-columns' = 'second')");
         tableEnv.executeSql("INSERT INTO TestTable5 VALUES ('s', 'f', 't')")
                 .getJobClient()
                 .get()
@@ -115,7 +115,7 @@ public class KuduCatalogTest extends KuduTestBase {
                 .get(1, TimeUnit.MINUTES);
 
         tableEnv.executeSql(
-                "CREATE TABLE TestTable6 (`first` STRING, `second` String) WITH ('kudu.hash-columns' = 'first', 'kudu.primary-key-columns' = 'first')");
+                "CREATE TABLE TestTable6 (`first` STRING, `second` String) WITH ('hash-columns' = 'first', 'primary-key-columns' = 'first')");
         tableEnv.executeSql("INSERT INTO TestTable6 (SELECT `first`, `second` FROM  TestTable5)")
                 .getJobClient()
                 .get()
@@ -129,7 +129,7 @@ public class KuduCatalogTest extends KuduTestBase {
     public void testEmptyProjection() throws Exception {
         CollectionSink.output.clear();
         tableEnv.executeSql(
-                "CREATE TABLE TestTableEP (`first` STRING, `second` STRING) WITH ('kudu.hash-columns' = 'first', 'kudu.primary-key-columns' = 'first')");
+                "CREATE TABLE TestTableEP (`first` STRING, `second` STRING) WITH ('hash-columns' = 'first', 'primary-key-columns' = 'first')");
         tableEnv.executeSql("INSERT INTO TestTableEP VALUES ('f','s')")
                 .getJobClient()
                 .get()
@@ -165,7 +165,7 @@ public class KuduCatalogTest extends KuduTestBase {
     public void testTimestamp() throws Exception {
         tableEnv.executeSql(
                 "CREATE TABLE TestTableTsC (`first` STRING, `second` TIMESTAMP(3)) "
-                        + "WITH ('kudu.hash-columns'='first', 'kudu.primary-key-columns'='first')");
+                        + "WITH ('hash-columns'='first', 'primary-key-columns'='first')");
         tableEnv.executeSql(
                         "INSERT INTO TestTableTsC values ('f', TIMESTAMP '2020-01-01 12:12:12.123456')")
                 .getJobClient()
@@ -191,7 +191,7 @@ public class KuduCatalogTest extends KuduTestBase {
                 "CREATE TABLE TestTable8 (`first` STRING, `second` BOOLEAN, `third` BYTES,"
                         + "`fourth` TINYINT, `fifth` SMALLINT, `sixth` INT, `seventh` BIGINT, `eighth` FLOAT, `ninth` DOUBLE, "
                         + "`tenth` TIMESTAMP)"
-                        + "WITH ('kudu.hash-columns' = 'first', 'kudu.primary-key-columns' = 'first')");
+                        + "WITH ('hash-columns' = 'first', 'primary-key-columns' = 'first')");
 
         tableEnv.executeSql(
                         "INSERT INTO TestTable8 values ('f', false, cast('bbbb' as BYTES), cast(12 as TINYINT),"
@@ -212,19 +212,19 @@ public class KuduCatalogTest extends KuduTestBase {
                 () ->
                         tableEnv.executeSql(
                                 "CREATE TABLE TestTable9a (`first` STRING, `second` String) "
-                                        + "WITH ('kudu.primary-key-columns' = 'second')"));
+                                        + "WITH ('primary-key-columns' = 'second')"));
         assertThrows(
                 TableException.class,
                 () ->
                         tableEnv.executeSql(
                                 "CREATE TABLE TestTable9b (`first` STRING, `second` String) "
-                                        + "WITH ('kudu.hash-columns' = 'first')"));
+                                        + "WITH ('hash-columns' = 'first')"));
         assertThrows(
                 TableException.class,
                 () ->
                         tableEnv.executeSql(
                                 "CREATE TABLE TestTable9b (`first` STRING, `second` String) "
-                                        + "WITH ('kudu.primary-key-columns' = 'second', 'kudu.hash-columns' = 'first')"));
+                                        + "WITH ('primary-key-columns' = 'second', 'hash-columns' = 'first')"));
     }
 
     private void validateManyTypes(String tableName) throws Exception {

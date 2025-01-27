@@ -28,7 +28,7 @@ import org.apache.kudu.shaded.com.google.common.collect.Sets;
 
 import java.util.Set;
 
-import static org.apache.flink.connector.kudu.table.KuduCommonOptions.KUDU_MASTERS;
+import static org.apache.flink.connector.kudu.table.KuduCommonOptions.MASTERS;
 import static org.apache.flink.connector.kudu.table.catalog.KuduCatalogOptions.DEFAULT_DATABASE;
 import static org.apache.flink.connector.kudu.table.catalog.KuduCatalogOptions.IDENTIFIER;
 import static org.apache.flink.table.factories.FactoryUtil.PROPERTY_VERSION;
@@ -44,7 +44,7 @@ public class KuduCatalogFactory implements CatalogFactory {
 
     @Override
     public Set<ConfigOption<?>> requiredOptions() {
-        return Sets.newHashSet(KUDU_MASTERS);
+        return Sets.newHashSet(MASTERS);
     }
 
     @Override
@@ -61,6 +61,6 @@ public class KuduCatalogFactory implements CatalogFactory {
         return new KuduCatalog(
                 context.getName(),
                 helper.getOptions().get(DEFAULT_DATABASE),
-                helper.getOptions().get(KUDU_MASTERS));
+                helper.getOptions().get(MASTERS));
     }
 }
