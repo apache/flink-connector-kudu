@@ -39,20 +39,20 @@ import javax.annotation.Nullable;
 
 import java.util.Set;
 
-import static org.apache.flink.connector.kudu.table.KuduCommonOptions.KUDU_MASTERS;
+import static org.apache.flink.connector.kudu.table.KuduCommonOptions.MASTERS;
+import static org.apache.flink.connector.kudu.table.KuduDynamicTableOptions.FLUSH_INTERVAL;
+import static org.apache.flink.connector.kudu.table.KuduDynamicTableOptions.FLUSH_MODE;
+import static org.apache.flink.connector.kudu.table.KuduDynamicTableOptions.HASH_COLS;
+import static org.apache.flink.connector.kudu.table.KuduDynamicTableOptions.HASH_PARTITION_NUMS;
 import static org.apache.flink.connector.kudu.table.KuduDynamicTableOptions.IDENTIFIER;
-import static org.apache.flink.connector.kudu.table.KuduDynamicTableOptions.KUDU_FLUSH_INTERVAL;
-import static org.apache.flink.connector.kudu.table.KuduDynamicTableOptions.KUDU_FLUSH_MODE;
-import static org.apache.flink.connector.kudu.table.KuduDynamicTableOptions.KUDU_HASH_COLS;
-import static org.apache.flink.connector.kudu.table.KuduDynamicTableOptions.KUDU_HASH_PARTITION_NUMS;
-import static org.apache.flink.connector.kudu.table.KuduDynamicTableOptions.KUDU_IGNORE_DUPLICATE;
-import static org.apache.flink.connector.kudu.table.KuduDynamicTableOptions.KUDU_IGNORE_NOT_FOUND;
-import static org.apache.flink.connector.kudu.table.KuduDynamicTableOptions.KUDU_MAX_BUFFER_SIZE;
-import static org.apache.flink.connector.kudu.table.KuduDynamicTableOptions.KUDU_OPERATION_TIMEOUT;
-import static org.apache.flink.connector.kudu.table.KuduDynamicTableOptions.KUDU_PRIMARY_KEY_COLS;
-import static org.apache.flink.connector.kudu.table.KuduDynamicTableOptions.KUDU_REPLICAS;
-import static org.apache.flink.connector.kudu.table.KuduDynamicTableOptions.KUDU_SCAN_ROW_SIZE;
-import static org.apache.flink.connector.kudu.table.KuduDynamicTableOptions.KUDU_TABLE;
+import static org.apache.flink.connector.kudu.table.KuduDynamicTableOptions.IGNORE_DUPLICATE;
+import static org.apache.flink.connector.kudu.table.KuduDynamicTableOptions.IGNORE_NOT_FOUND;
+import static org.apache.flink.connector.kudu.table.KuduDynamicTableOptions.MAX_BUFFER_SIZE;
+import static org.apache.flink.connector.kudu.table.KuduDynamicTableOptions.OPERATION_TIMEOUT;
+import static org.apache.flink.connector.kudu.table.KuduDynamicTableOptions.PRIMARY_KEY_COLS;
+import static org.apache.flink.connector.kudu.table.KuduDynamicTableOptions.REPLICAS;
+import static org.apache.flink.connector.kudu.table.KuduDynamicTableOptions.SCAN_ROW_SIZE;
+import static org.apache.flink.connector.kudu.table.KuduDynamicTableOptions.TABLE_NAME;
 
 /**
  * Factory for creating configured instances of {@link KuduDynamicTableSource}/{@link
@@ -67,25 +67,24 @@ public class KuduDynamicTableFactory implements DynamicTableSourceFactory, Dynam
 
     @Override
     public Set<ConfigOption<?>> requiredOptions() {
-        return Sets.newHashSet(KUDU_MASTERS);
+        return Sets.newHashSet(MASTERS);
     }
 
     @Override
     public Set<ConfigOption<?>> optionalOptions() {
         return Sets.newHashSet(
-                KUDU_TABLE,
-                KUDU_HASH_COLS,
-                KUDU_HASH_PARTITION_NUMS,
-                KUDU_PRIMARY_KEY_COLS,
-                KUDU_SCAN_ROW_SIZE,
-                KUDU_REPLICAS,
-                KUDU_MAX_BUFFER_SIZE,
-                KUDU_MAX_BUFFER_SIZE,
-                KUDU_OPERATION_TIMEOUT,
-                KUDU_FLUSH_MODE,
-                KUDU_FLUSH_INTERVAL,
-                KUDU_IGNORE_NOT_FOUND,
-                KUDU_IGNORE_DUPLICATE,
+                TABLE_NAME,
+                HASH_COLS,
+                HASH_PARTITION_NUMS,
+                PRIMARY_KEY_COLS,
+                SCAN_ROW_SIZE,
+                REPLICAS,
+                MAX_BUFFER_SIZE,
+                OPERATION_TIMEOUT,
+                FLUSH_MODE,
+                FLUSH_INTERVAL,
+                IGNORE_NOT_FOUND,
+                IGNORE_DUPLICATE,
                 LookupOptions.CACHE_TYPE,
                 LookupOptions.PARTIAL_CACHE_MAX_ROWS,
                 LookupOptions.PARTIAL_CACHE_EXPIRE_AFTER_ACCESS,
@@ -99,7 +98,7 @@ public class KuduDynamicTableFactory implements DynamicTableSourceFactory, Dynam
         final ReadableConfig config = getValidatedConfig(context);
 
         final String tableName =
-                config.getOptional(KUDU_TABLE)
+                config.getOptional(TABLE_NAME)
                         .orElse(context.getObjectIdentifier().getObjectName());
         final ResolvedSchema schema = context.getCatalogTable().getResolvedSchema();
         final KuduTableInfo tableInfo =
@@ -107,13 +106,13 @@ public class KuduDynamicTableFactory implements DynamicTableSourceFactory, Dynam
                         tableName, schema, context.getCatalogTable().toProperties());
 
         final KuduWriterConfig.Builder configBuilder =
-                KuduWriterConfig.Builder.setMasters(config.get(KUDU_MASTERS))
-                        .setOperationTimeout(config.get(KUDU_OPERATION_TIMEOUT).toMillis())
-                        .setConsistency(config.get(KUDU_FLUSH_MODE))
-                        .setFlushInterval((int) config.get(KUDU_FLUSH_INTERVAL).toMillis())
-                        .setMaxBufferSize(config.get(KUDU_MAX_BUFFER_SIZE))
-                        .setIgnoreNotFound(config.get(KUDU_IGNORE_NOT_FOUND))
-                        .setIgnoreDuplicate(config.get(KUDU_IGNORE_DUPLICATE));
+                KuduWriterConfig.Builder.setMasters(config.get(MASTERS))
+                        .setOperationTimeout(config.get(OPERATION_TIMEOUT).toMillis())
+                        .setConsistency(config.get(FLUSH_MODE))
+                        .setFlushInterval((int) config.get(FLUSH_INTERVAL).toMillis())
+                        .setMaxBufferSize(config.get(MAX_BUFFER_SIZE))
+                        .setIgnoreNotFound(config.get(IGNORE_NOT_FOUND))
+                        .setIgnoreDuplicate(config.get(IGNORE_DUPLICATE));
 
         return new KuduDynamicTableSink(configBuilder, tableInfo, schema);
     }
@@ -123,7 +122,7 @@ public class KuduDynamicTableFactory implements DynamicTableSourceFactory, Dynam
         final ReadableConfig config = getValidatedConfig(context);
 
         final String tableName =
-                config.getOptional(KUDU_TABLE)
+                config.getOptional(TABLE_NAME)
                         .orElse(context.getObjectIdentifier().getObjectName());
         final KuduTableInfo tableInfo =
                 KuduTableUtils.createTableInfo(
@@ -132,8 +131,8 @@ public class KuduDynamicTableFactory implements DynamicTableSourceFactory, Dynam
                         context.getCatalogTable().toProperties());
 
         final KuduReaderConfig.Builder readerConfigBuilder =
-                KuduReaderConfig.Builder.setMasters(config.get(KUDU_MASTERS))
-                        .setRowLimit(config.get(KUDU_SCAN_ROW_SIZE));
+                KuduReaderConfig.Builder.setMasters(config.get(MASTERS))
+                        .setRowLimit(config.get(SCAN_ROW_SIZE));
 
         return new KuduDynamicTableSource(
                 readerConfigBuilder,

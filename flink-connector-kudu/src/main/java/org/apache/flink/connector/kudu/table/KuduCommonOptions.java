@@ -25,8 +25,8 @@ import org.apache.flink.configuration.ConfigOptions;
 @PublicEvolving
 public class KuduCommonOptions {
 
-    public static final ConfigOption<String> KUDU_MASTERS =
-            ConfigOptions.key("kudu.masters")
+    public static final ConfigOption<String> MASTERS =
+            ConfigOptions.key("masters")
                     .stringType()
                     .noDefaultValue()
                     .withDescription("kudu's master server address");

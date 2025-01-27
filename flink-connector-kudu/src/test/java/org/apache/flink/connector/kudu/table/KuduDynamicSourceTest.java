@@ -71,14 +71,14 @@ public class KuduDynamicSourceTest extends KuduTestBase {
                         + "quantity int"
                         + ") WITH ("
                         + "  'connector'='kudu',"
-                        + "  'kudu.masters'='"
+                        + "  'masters'='"
                         + getMasterAddress()
                         + "',"
-                        + "  'kudu.table'='"
+                        + "  'table-name'='"
                         + INPUT_TABLE
                         + "',"
-                        + "'kudu.scan.row-size'='10',"
-                        + "'kudu.primary-key-columns'='id'"
+                        + "'scan.row-size'='10',"
+                        + "'primary-key-columns'='id'"
                         + ")");
 
         Iterator<Row> collected = tEnv.executeSql("SELECT * FROM " + INPUT_TABLE).collect();
@@ -98,14 +98,14 @@ public class KuduDynamicSourceTest extends KuduTestBase {
                         + "quantity int"
                         + ") WITH ("
                         + "  'connector'='kudu',"
-                        + "  'kudu.masters'='"
+                        + "  'masters'='"
                         + getMasterAddress()
                         + "',"
-                        + "  'kudu.table'='"
+                        + "  'table-name'='"
                         + INPUT_TABLE
                         + "',"
-                        + "'kudu.scan.row-size'='10',"
-                        + "'kudu.primary-key-columns'='id'"
+                        + "'scan.row-size'='10',"
+                        + "'primary-key-columns'='id'"
                         + ")");
 
         Iterator<Row> collected =
@@ -141,14 +141,14 @@ public class KuduDynamicSourceTest extends KuduTestBase {
                         + "quantity int"
                         + ") WITH ("
                         + "  'connector'='kudu',"
-                        + "  'kudu.masters'='"
+                        + "  'masters'='"
                         + getMasterAddress()
                         + "',"
-                        + "  'kudu.table'='"
+                        + "  'table-name'='"
                         + INPUT_TABLE
                         + "',"
-                        + "'kudu.scan.row-size'='10',"
-                        + "'kudu.primary-key-columns'='id'"
+                        + "'scan.row-size'='10',"
+                        + "'primary-key-columns'='id'"
                         + ")");
 
         Iterator<Row> collected =
@@ -174,14 +174,14 @@ public class KuduDynamicSourceTest extends KuduTestBase {
                         + "quantity int"
                         + ") WITH ("
                         + "  'connector'='kudu',"
-                        + "  'kudu.masters'='"
+                        + "  'masters'='"
                         + getMasterAddress()
                         + "',"
-                        + "  'kudu.table'='"
+                        + "  'table-name'='"
                         + INPUT_TABLE
                         + "',"
-                        + "'kudu.scan.row-size'='10',"
-                        + "'kudu.primary-key-columns'='id'"
+                        + "'scan.row-size'='10',"
+                        + "'primary-key-columns'='id'"
                         + ")");
 
         tEnv.executeSql(
