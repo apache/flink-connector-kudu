@@ -42,30 +42,26 @@ import org.apache.flink.table.expressions.Expression;
 import org.apache.flink.table.factories.Factory;
 import org.apache.flink.util.StringUtils;
 
-import org.apache.kudu.ColumnSchema;
 import org.apache.kudu.client.AlterTableOptions;
 import org.apache.kudu.client.KuduClient;
 import org.apache.kudu.client.KuduException;
 import org.apache.kudu.client.KuduTable;
+import org.apache.kudu.shaded.com.google.common.collect.ImmutableMap;
 import org.apache.kudu.shaded.com.google.common.collect.ImmutableSet;
 import org.apache.kudu.shaded.com.google.common.collect.Lists;
-import org.apache.kudu.shaded.com.google.common.collect.Sets;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 import static org.apache.flink.connector.kudu.table.KuduCommonOptions.MASTERS;
 import static org.apache.flink.connector.kudu.table.KuduDynamicTableOptions.HASH_COLS;
-import static org.apache.flink.connector.kudu.table.KuduDynamicTableOptions.HASH_PARTITION_NUMS;
-import static org.apache.flink.connector.kudu.table.KuduDynamicTableOptions.PRIMARY_KEY_COLS;
+import static org.apache.flink.connector.kudu.table.KuduDynamicTableOptions.HASH_PARTITIONS;
 import static org.apache.flink.connector.kudu.table.KuduDynamicTableOptions.REPLICAS;
 import static org.apache.flink.connector.kudu.table.KuduDynamicTableOptions.TABLE_NAME;
 import static org.apache.flink.util.Preconditions.checkArgument;
@@ -177,23 +173,18 @@ public class KuduCatalog extends AbstractReadOnlyCatalog {
                     KuduTableUtils.kuduToFlinkSchema(kuduTable.getSchema()),
                     null,
                     Collections.emptyList(),
-                    createTableProperties(tableName, kuduTable.getSchema().getPrimaryKeyColumns()));
+                    createTableProperties(kuduTable));
         } catch (KuduException e) {
             throw new CatalogException(e);
         }
     }
 
-    protected Map<String, String> createTableProperties(
-            String tableName, List<ColumnSchema> primaryKeyColumns) {
-        Map<String, String> props = new HashMap<>();
-        props.put(MASTERS.key(), kuduMasters);
-        props.put(TABLE_NAME.key(), tableName);
-        String primaryKeyNames =
-                primaryKeyColumns.stream()
-                        .map(ColumnSchema::getName)
-                        .collect(Collectors.joining(","));
-        props.put(PRIMARY_KEY_COLS.key(), primaryKeyNames);
-        return props;
+    protected Map<String, String> createTableProperties(KuduTable kuduTable) {
+        return ImmutableMap.<String, String>builder()
+                .put(MASTERS.key(), kuduMasters)
+                .put(TABLE_NAME.key(), kuduTable.getName())
+                .put(REPLICAS.key(), String.valueOf(kuduTable.getNumReplicas()))
+                .build();
     }
 
     @Override
@@ -258,24 +249,12 @@ public class KuduCatalog extends AbstractReadOnlyCatalog {
         ResolvedSchema schema = ((ResolvedCatalogBaseTable<?>) table).getResolvedSchema();
 
         Set<String> optionalProperties =
-                ImmutableSet.of(REPLICAS.key(), HASH_PARTITION_NUMS.key(), HASH_COLS.key());
+                ImmutableSet.of(REPLICAS.key(), HASH_PARTITIONS.key(), HASH_COLS.key());
 
-        Set<String> requiredProperties = new HashSet<>();
-        if (!schema.getPrimaryKey().isPresent()) {
-            requiredProperties.add(PRIMARY_KEY_COLS.key());
-        }
-
-        if (!tableProperties.keySet().containsAll(requiredProperties)) {
+        if (!optionalProperties.containsAll(tableProperties.keySet())) {
             throw new CatalogException(
-                    "Missing required property. The following properties must be provided: "
-                            + requiredProperties);
-        }
-
-        Set<String> permittedProperties = Sets.union(requiredProperties, optionalProperties);
-        if (!permittedProperties.containsAll(tableProperties.keySet())) {
-            throw new CatalogException(
-                    "Unpermitted properties were given. The following properties are allowed:"
-                            + permittedProperties);
+                    "Unknown properties were given. The following properties are allowed:"
+                            + optionalProperties);
         }
 
         String tableName = tablePath.getObjectName();

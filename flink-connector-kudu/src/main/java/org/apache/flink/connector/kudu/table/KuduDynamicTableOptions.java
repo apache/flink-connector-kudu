@@ -43,24 +43,17 @@ public class KuduDynamicTableOptions {
                     .noDefaultValue()
                     .withDescription("kudu's hash columns");
 
-    public static final ConfigOption<String> PRIMARY_KEY_COLS =
-            ConfigOptions.key("primary-key-columns")
-                    .stringType()
-                    .noDefaultValue()
-                    .withDescription("kudu's primary key, primary key must be ordered");
-
     public static final ConfigOption<Integer> REPLICAS =
             ConfigOptions.key("replicas")
                     .intType()
                     .defaultValue(3)
                     .withDescription("kudu's replica nums");
 
-    public static final ConfigOption<Integer> HASH_PARTITION_NUMS =
-            ConfigOptions.key("hash-partition-nums")
+    public static final ConfigOption<Integer> HASH_PARTITIONS =
+            ConfigOptions.key("hash-partitions")
                     .intType()
-                    .defaultValue(REPLICAS.defaultValue() * 2)
-                    .withDescription(
-                            "kudu's hash partition bucket nums, defaultValue is 2 * replicas");
+                    .defaultValue(3)
+                    .withDescription("kudu's hash partition bucket number, default value is 3");
 
     // -----------------------------------------------------------------------------------------
     // Sink options

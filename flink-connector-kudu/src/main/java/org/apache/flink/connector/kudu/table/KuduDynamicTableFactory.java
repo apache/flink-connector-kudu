@@ -43,13 +43,12 @@ import static org.apache.flink.connector.kudu.table.KuduCommonOptions.MASTERS;
 import static org.apache.flink.connector.kudu.table.KuduDynamicTableOptions.FLUSH_INTERVAL;
 import static org.apache.flink.connector.kudu.table.KuduDynamicTableOptions.FLUSH_MODE;
 import static org.apache.flink.connector.kudu.table.KuduDynamicTableOptions.HASH_COLS;
-import static org.apache.flink.connector.kudu.table.KuduDynamicTableOptions.HASH_PARTITION_NUMS;
+import static org.apache.flink.connector.kudu.table.KuduDynamicTableOptions.HASH_PARTITIONS;
 import static org.apache.flink.connector.kudu.table.KuduDynamicTableOptions.IDENTIFIER;
 import static org.apache.flink.connector.kudu.table.KuduDynamicTableOptions.IGNORE_DUPLICATE;
 import static org.apache.flink.connector.kudu.table.KuduDynamicTableOptions.IGNORE_NOT_FOUND;
 import static org.apache.flink.connector.kudu.table.KuduDynamicTableOptions.MAX_BUFFER_SIZE;
 import static org.apache.flink.connector.kudu.table.KuduDynamicTableOptions.OPERATION_TIMEOUT;
-import static org.apache.flink.connector.kudu.table.KuduDynamicTableOptions.PRIMARY_KEY_COLS;
 import static org.apache.flink.connector.kudu.table.KuduDynamicTableOptions.REPLICAS;
 import static org.apache.flink.connector.kudu.table.KuduDynamicTableOptions.SCAN_ROW_SIZE;
 import static org.apache.flink.connector.kudu.table.KuduDynamicTableOptions.TABLE_NAME;
@@ -75,8 +74,7 @@ public class KuduDynamicTableFactory implements DynamicTableSourceFactory, Dynam
         return Sets.newHashSet(
                 TABLE_NAME,
                 HASH_COLS,
-                HASH_PARTITION_NUMS,
-                PRIMARY_KEY_COLS,
+                HASH_PARTITIONS,
                 SCAN_ROW_SIZE,
                 REPLICAS,
                 MAX_BUFFER_SIZE,

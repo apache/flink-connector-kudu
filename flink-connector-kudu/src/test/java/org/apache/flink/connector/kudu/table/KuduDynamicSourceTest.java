@@ -64,7 +64,7 @@ public class KuduDynamicSourceTest extends KuduTestBase {
                 "CREATE TABLE "
                         + INPUT_TABLE
                         + "("
-                        + "id int,"
+                        + "id int PRIMARY KEY NOT ENFORCED,"
                         + "title string,"
                         + "author string,"
                         + "price double,"
@@ -77,8 +77,7 @@ public class KuduDynamicSourceTest extends KuduTestBase {
                         + "  'table-name'='"
                         + INPUT_TABLE
                         + "',"
-                        + "'scan.row-size'='10',"
-                        + "'primary-key-columns'='id'"
+                        + "'scan.row-size'='10'"
                         + ")");
 
         Iterator<Row> collected = tEnv.executeSql("SELECT * FROM " + INPUT_TABLE).collect();
@@ -91,7 +90,7 @@ public class KuduDynamicSourceTest extends KuduTestBase {
                 "CREATE TABLE "
                         + INPUT_TABLE
                         + "("
-                        + "id int,"
+                        + "id int PRIMARY KEY NOT ENFORCED,"
                         + "title string,"
                         + "author string,"
                         + "price double,"
@@ -104,8 +103,7 @@ public class KuduDynamicSourceTest extends KuduTestBase {
                         + "  'table-name'='"
                         + INPUT_TABLE
                         + "',"
-                        + "'scan.row-size'='10',"
-                        + "'primary-key-columns'='id'"
+                        + "'scan.row-size'='10'"
                         + ")");
 
         Iterator<Row> collected =
@@ -134,7 +132,7 @@ public class KuduDynamicSourceTest extends KuduTestBase {
                 "CREATE TABLE "
                         + INPUT_TABLE
                         + "("
-                        + "id int,"
+                        + "id int PRIMARY KEY NOT ENFORCED,"
                         + "title string,"
                         + "author string,"
                         + "price double,"
@@ -147,8 +145,7 @@ public class KuduDynamicSourceTest extends KuduTestBase {
                         + "  'table-name'='"
                         + INPUT_TABLE
                         + "',"
-                        + "'scan.row-size'='10',"
-                        + "'primary-key-columns'='id'"
+                        + "'scan.row-size'='10'"
                         + ")");
 
         Iterator<Row> collected =
@@ -167,7 +164,7 @@ public class KuduDynamicSourceTest extends KuduTestBase {
                 "CREATE TABLE "
                         + INPUT_TABLE
                         + "("
-                        + "id int,"
+                        + "id int PRIMARY KEY NOT ENFORCED,"
                         + "title string,"
                         + "author string,"
                         + "price double,"
@@ -180,8 +177,7 @@ public class KuduDynamicSourceTest extends KuduTestBase {
                         + "  'table-name'='"
                         + INPUT_TABLE
                         + "',"
-                        + "'scan.row-size'='10',"
-                        + "'primary-key-columns'='id'"
+                        + "'scan.row-size'='10'"
                         + ")");
 
         tEnv.executeSql(
