@@ -50,8 +50,7 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 
 import static org.apache.flink.connector.kudu.table.KuduDynamicTableOptions.HASH_COLS;
-import static org.apache.flink.connector.kudu.table.KuduDynamicTableOptions.HASH_PARTITION_NUMS;
-import static org.apache.flink.connector.kudu.table.KuduDynamicTableOptions.PRIMARY_KEY_COLS;
+import static org.apache.flink.connector.kudu.table.KuduDynamicTableOptions.HASH_PARTITIONS;
 import static org.apache.flink.connector.kudu.table.KuduDynamicTableOptions.REPLICAS;
 
 /** Kudu table utilities. */
@@ -61,38 +60,37 @@ public class KuduTableUtils {
 
     public static KuduTableInfo createTableInfo(
             String tableName, ResolvedSchema schema, Map<String, String> props) {
-        // Since KUDU_HASH_COLS is a required property for table creation, we use it to infer
-        // whether to create table
-        boolean createIfMissing =
-                props.containsKey(PRIMARY_KEY_COLS.key()) || schema.getPrimaryKey().isPresent();
         KuduTableInfo tableInfo = KuduTableInfo.forTable(tableName);
 
-        if (createIfMissing) {
-            List<Tuple2<String, DataType>> columns =
-                    schema.getColumns().stream()
-                            .map(col -> Tuple2.of(col.getName(), col.getDataType()))
-                            .collect(Collectors.toList());
-            List<String> keyColumns = getPrimaryKeyColumns(props, schema);
-
-            ColumnSchemasFactory schemasFactory = () -> toKuduConnectorColumns(columns, keyColumns);
-            int replicas =
-                    Optional.ofNullable(props.get(REPLICAS.key())).map(Integer::parseInt).orElse(1);
-            // if hash partitions nums not exists,default 3;
-            int hashPartitionNums =
-                    Optional.ofNullable(props.get(HASH_PARTITION_NUMS.key()))
-                            .map(Integer::parseInt)
-                            .orElse(3);
-            CreateTableOptionsFactory optionsFactory =
-                    () ->
-                            new CreateTableOptions()
-                                    .setNumReplicas(replicas)
-                                    .addHashPartitions(getHashColumns(props), hashPartitionNums);
-            tableInfo.createTableIfNotExists(schemasFactory, optionsFactory);
-        } else {
-            LOG.debug(
-                    "Property {} is missing, assuming the table is already created.",
-                    HASH_COLS.key());
+        if (!schema.getPrimaryKey().isPresent()) {
+            LOG.info(
+                    "Primary key is not defined in the Flink table schema, assuming the table in Kudu already exists.");
+            return tableInfo;
         }
+
+        List<Tuple2<String, DataType>> columns =
+                schema.getColumns().stream()
+                        .map(col -> Tuple2.of(col.getName(), col.getDataType()))
+                        .collect(Collectors.toList());
+
+        List<String> primaryKeyCols = schema.getPrimaryKey().get().getColumns();
+        ColumnSchemasFactory schemasFactory = () -> toKuduConnectorColumns(columns, primaryKeyCols);
+        int replicas =
+                Optional.ofNullable(props.get(REPLICAS.key()))
+                        .map(Integer::parseInt)
+                        .orElse(REPLICAS.defaultValue());
+        List<String> hashCols = getHashColumns(props).orElse(primaryKeyCols);
+        int hashPartitions =
+                Optional.ofNullable(props.get(HASH_PARTITIONS.key()))
+                        .map(Integer::parseInt)
+                        .orElse(HASH_PARTITIONS.defaultValue());
+        CreateTableOptionsFactory optionsFactory =
+                () ->
+                        new CreateTableOptions()
+                                .setNumReplicas(replicas)
+                                .addHashPartitions(hashCols, hashPartitions);
+
+        tableInfo.createTableIfNotExists(schemasFactory, optionsFactory);
 
         return tableInfo;
     }
@@ -136,15 +134,11 @@ public class KuduTableUtils {
         return builder.build();
     }
 
-    public static List<String> getPrimaryKeyColumns(
-            Map<String, String> tableProperties, ResolvedSchema schema) {
-        return tableProperties.containsKey(PRIMARY_KEY_COLS.key())
-                ? Arrays.asList(tableProperties.get(PRIMARY_KEY_COLS.key()).split(","))
-                : schema.getPrimaryKey().get().getColumns();
-    }
-
-    public static List<String> getHashColumns(Map<String, String> tableProperties) {
-        return Arrays.asList(tableProperties.get(HASH_COLS.key()).split(","));
+    public static Optional<List<String>> getHashColumns(Map<String, String> tableProps) {
+        if (!tableProps.containsKey(HASH_COLS.key())) {
+            return Optional.empty();
+        }
+        return Optional.of(Arrays.asList(tableProps.get(HASH_COLS.key()).split(",")));
     }
 
     /** Converts Flink Expression to KuduFilterInfo. */
