@@ -43,7 +43,7 @@ public class KuduSourceSplitSerializer implements SimpleVersionedSerializer<Kudu
     @Override
     public KuduSourceSplit deserialize(int version, byte[] serialized) throws IOException {
         if (version != VERSION) {
-            throw new IOException("Unsupported version: " + version);
+            throw new IllegalArgumentException("Unsupported version: " + version);
         }
         if (serialized == null || serialized.length == 0) {
             throw new IOException("Serialized data is empty or null.");

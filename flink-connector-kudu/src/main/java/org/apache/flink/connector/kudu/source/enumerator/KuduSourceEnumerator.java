@@ -52,10 +52,17 @@ import java.util.function.Supplier;
  * <p>This approach means that new splits can only be enumerated once the current time range is
  * fully processed.
  *
- * <p>The process is controlled as follows: Once a set of splits is enumerated for a time range, we
- * track: Unassigned splits that have been discovered but not yet assigned to readers. Pending
- * splits that are assigned but not yet fully processed. A new set of splits is generated only when
- * there are no remaining unassigned or pending splits.
+ * <p>The process is controlled as follows:
+ *
+ * <ul>
+ *   <li>Once a set of splits is enumerated for a time range, we track:
+ *       <ul>
+ *         <li><b>Unassigned splits</b>: Discovered but not yet assigned to readers.
+ *         <li><b>Pending splits</b>: Assigned but not yet fully processed.
+ *       </ul>
+ *   <li>A new set of splits is generated only when there are no remaining unassigned or pending
+ *       splits.
+ * </ul>
  */
 public class KuduSourceEnumerator
         implements SplitEnumerator<KuduSourceSplit, KuduSourceEnumeratorState> {
@@ -143,7 +150,8 @@ public class KuduSourceEnumerator
 
     // This function is invoked repeatedly according to this.period if there are no outstanding
     // splits.
-    // Outstanding meaning that no pending splits, and no enumerated but not assigned splits for the
+    // Outstanding meaning that there are no pending splits, and no enumerated but not assigned
+    // splits for the
     // current period.
     private List<KuduSourceSplit> enumerateNewSplits(@Nonnull Supplier<Boolean> shouldGenerate) {
         if (shouldGenerate.get() == Boolean.FALSE) {

@@ -43,6 +43,10 @@ public class KuduSplitGenerator {
     }
 
     public List<KuduSourceSplit> generateFullScanSplits(long snapshotTimestamp) {
+        if (snapshotTimestamp <= 0) {
+            throw new IllegalArgumentException(
+                    "Snapshot timestamp must be greater than 0, but was: " + snapshotTimestamp);
+        }
         try {
             KuduTable table = kuduClient.openTable(tableInfo.getName());
             List<KuduScanToken> tokens =
@@ -54,11 +58,27 @@ public class KuduSplitGenerator {
 
             return serializeTokens(tokens);
         } catch (Exception e) {
-            throw new RuntimeException("Error during full snapshot scan", e);
+            throw new RuntimeException("Error during full snapshot scan: " + e.getMessage(), e);
         }
     }
 
     public List<KuduSourceSplit> generateIncrementalSplits(long startHT, long endHT) {
+        if (startHT <= 0 || endHT <= 0) {
+            throw new IllegalArgumentException(
+                    "Start and end timestamps must be greater than 0. Given startHT: "
+                            + startHT
+                            + ", endHT: "
+                            + endHT);
+        }
+
+        if (startHT >= endHT) {
+            throw new IllegalArgumentException(
+                    "Start timestamp must be less than end timestamp. Given startHT: "
+                            + startHT
+                            + ", endHT: "
+                            + endHT);
+        }
+
         try {
             KuduTable table = kuduClient.openTable(tableInfo.getName());
             List<KuduScanToken> tokens =
@@ -66,7 +86,7 @@ public class KuduSplitGenerator {
 
             return serializeTokens(tokens);
         } catch (Exception e) {
-            throw new RuntimeException("Error during incremental diff scan", e);
+            throw new RuntimeException("Error during incremental diff scan: " + e.getMessage(), e);
         }
     }
 
@@ -78,7 +98,8 @@ public class KuduSplitGenerator {
             }
             return splits;
         } catch (Exception e) {
-            throw new RuntimeException("Error during source split serialization", e);
+            throw new RuntimeException(
+                    "Error during source split serialization: " + e.getMessage(), e);
         }
     }
 

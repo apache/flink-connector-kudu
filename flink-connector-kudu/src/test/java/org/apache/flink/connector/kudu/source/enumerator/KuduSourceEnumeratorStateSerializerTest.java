@@ -55,14 +55,32 @@ public class KuduSourceEnumeratorStateSerializerTest {
         assertThat(state.getUnassigned().size()).isEqualTo(deserialized.getUnassigned().size());
         assertThat(state.getPending().size()).isEqualTo(deserialized.getPending().size());
 
-        for (int i = 0; i < unassigned.size(); i++) {
-            assertThat(unassigned.get(i).getSerializedScanToken())
-                    .isEqualTo(deserialized.getUnassigned().get(i).getSerializedScanToken());
+        for (KuduSourceSplit split : unassigned) {
+            assertThat(split.getSerializedScanToken())
+                    .isEqualTo(
+                            deserialized.getUnassigned().stream()
+                                    .filter(
+                                            dSplit ->
+                                                    Arrays.equals(
+                                                            dSplit.getSerializedScanToken(),
+                                                            split.getSerializedScanToken()))
+                                    .findFirst()
+                                    .orElseThrow(() -> new AssertionError("Missing expected split"))
+                                    .getSerializedScanToken());
         }
 
-        for (int i = 0; i < pending.size(); i++) {
-            assertThat(pending.get(i).getSerializedScanToken())
-                    .isEqualTo(deserialized.getPending().get(i).getSerializedScanToken());
+        for (KuduSourceSplit split : pending) {
+            assertThat(split.getSerializedScanToken())
+                    .isEqualTo(
+                            deserialized.getPending().stream()
+                                    .filter(
+                                            dSplit ->
+                                                    Arrays.equals(
+                                                            dSplit.getSerializedScanToken(),
+                                                            split.getSerializedScanToken()))
+                                    .findFirst()
+                                    .orElseThrow(() -> new AssertionError("Missing expected split"))
+                                    .getSerializedScanToken());
         }
     }
 

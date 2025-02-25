@@ -30,16 +30,26 @@ import org.junit.jupiter.api.Test;
 import java.util.List;
 
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
 
 /** Tests for {@link KuduSplitGenerator}. */
 public class KuduSplitGeneratorTest extends KuduSourceTestBase {
 
+    private final long startHT;
+    private final long endHT;
+    private final long currentHT;
+
+    public KuduSplitGeneratorTest() throws Exception {
+        currentHT = getCurrentHybridTime();
+        startHT = getCurrentHybridTime();
+        Thread.sleep(1000);
+        endHT = getCurrentHybridTime();
+    }
+
     @Test
     public void testGenerateGoodFullScanSplits() {
         KuduSplitGenerator generator = new KuduSplitGenerator(getReaderConfig(), getTableInfo());
-        long now = getCurrentHybridTime();
-        List<KuduSourceSplit> splits = generator.generateFullScanSplits(now);
+        List<KuduSourceSplit> splits = generator.generateFullScanSplits(currentHT);
         assertThat(splits.size()).isGreaterThan(0);
         // Check that all the splits can be properly deserialized into Kudu scanners.
         for (KuduSourceSplit split : splits) {
@@ -56,9 +66,6 @@ public class KuduSplitGeneratorTest extends KuduSourceTestBase {
     @Test
     public void testGenerateGoodIncrementalSplits() throws Exception {
         KuduSplitGenerator generator = new KuduSplitGenerator(getReaderConfig(), getTableInfo());
-        long startHT = getCurrentHybridTime();
-        Thread.sleep(1000);
-        long endHT = getCurrentHybridTime();
         List<KuduSourceSplit> splits = generator.generateIncrementalSplits(startHT, endHT);
         assertThat(splits.size()).isGreaterThan(0);
         // Check that all the splits can be properly deserialized into Kudu scanners.
@@ -74,33 +81,47 @@ public class KuduSplitGeneratorTest extends KuduSourceTestBase {
     }
 
     @Test
-    public void testInvalidReaderConfig() {
+    public void testInvalidReaderConfigFullScan() {
         KuduReaderConfig invalidReaderConfig =
                 KuduReaderConfig.Builder.setMasters("invalidMasters").build();
         KuduSplitGenerator generator = new KuduSplitGenerator(invalidReaderConfig, getTableInfo());
 
-        long now = getCurrentHybridTime();
-        Exception exception =
-                assertThrows(
-                        RuntimeException.class,
-                        () -> {
-                            List<KuduSourceSplit> splits = generator.generateFullScanSplits(now);
-                        });
-        assertThat(exception.getMessage()).contains("Error during full snapshot scan");
+        assertThatThrownBy(() -> generator.generateFullScanSplits(currentHT))
+                .isInstanceOf(RuntimeException.class)
+                .hasMessageContaining(
+                        "Error during full snapshot scan: Couldn't find a valid master");
     }
 
     @Test
-    public void testInvalidTableInfo() {
+    public void testInvalidTableInfoFullScan() {
         KuduTableInfo invalidTableInfo = KuduTableInfo.forTable("nonExistentTable");
         KuduSplitGenerator generator = new KuduSplitGenerator(getReaderConfig(), invalidTableInfo);
 
-        long now = getCurrentHybridTime();
-        Exception exception =
-                assertThrows(
-                        RuntimeException.class,
-                        () -> {
-                            List<KuduSourceSplit> splits = generator.generateFullScanSplits(now);
-                        });
-        assertThat(exception.getMessage()).contains("Error during full snapshot scan");
+        assertThatThrownBy(() -> generator.generateFullScanSplits(currentHT))
+                .isInstanceOf(RuntimeException.class)
+                .hasMessageContaining("Error during full snapshot scan: the table does not exist");
+    }
+
+    @Test
+    public void testInvalidReaderConfigIncrementalScan() throws Exception {
+        KuduReaderConfig invalidReaderConfig =
+                KuduReaderConfig.Builder.setMasters("invalidMasters").build();
+        KuduSplitGenerator generator = new KuduSplitGenerator(invalidReaderConfig, getTableInfo());
+
+        assertThatThrownBy(() -> generator.generateIncrementalSplits(startHT, endHT))
+                .isInstanceOf(RuntimeException.class)
+                .hasMessageContaining(
+                        "Error during incremental diff scan: Couldn't find a valid master");
+    }
+
+    @Test
+    public void testInvalidTableInfoIncrementalScan() throws Exception {
+        KuduTableInfo invalidTableInfo = KuduTableInfo.forTable("nonExistentTable");
+        KuduSplitGenerator generator = new KuduSplitGenerator(getReaderConfig(), invalidTableInfo);
+
+        assertThatThrownBy(() -> generator.generateIncrementalSplits(startHT, endHT))
+                .isInstanceOf(RuntimeException.class)
+                .hasMessageContaining(
+                        "Error during incremental diff scan: the table does not exist");
     }
 }
