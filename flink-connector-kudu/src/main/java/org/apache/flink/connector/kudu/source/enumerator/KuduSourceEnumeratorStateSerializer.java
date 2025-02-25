@@ -58,7 +58,7 @@ public class KuduSourceEnumeratorStateSerializer
     public KuduSourceEnumeratorState deserialize(int version, byte[] serialized)
             throws IOException {
         if (version != VERSION) {
-            throw new IOException("Unsupported version: " + version);
+            throw new IllegalArgumentException("Unsupported version: " + version);
         }
 
         try (ByteArrayInputStream bais = new ByteArrayInputStream(serialized);

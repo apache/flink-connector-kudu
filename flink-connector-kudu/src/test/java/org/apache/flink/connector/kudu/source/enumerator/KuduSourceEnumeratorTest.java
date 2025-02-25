@@ -32,10 +32,6 @@ import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-// Basic test to verify that when a registered reader requests a split:
-// - An unassigned split moves to the enumerator context's split assignment.
-// - The enumerator tracks this split by adding it to the pending list.
-
 /**
  * Unit tests for {@link KuduSourceEnumerator}.
  *
@@ -72,9 +68,9 @@ public class KuduSourceEnumeratorTest {
         byte[] token = {1, 2, 3, 4, 5};
         split = new KuduSourceSplit(token);
 
-        List<KuduSourceSplit> unassigned = new ArrayList<KuduSourceSplit>();
+        List<KuduSourceSplit> unassigned = new ArrayList<>();
         unassigned.add(split);
-        List<KuduSourceSplit> pending = new ArrayList<KuduSourceSplit>();
+        List<KuduSourceSplit> pending = new ArrayList<>();
 
         KuduSourceEnumeratorState state = new KuduSourceEnumeratorState(1L, unassigned, pending);
 
