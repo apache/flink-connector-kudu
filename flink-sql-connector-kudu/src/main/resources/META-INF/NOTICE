@@ -1,0 +1,14 @@
+flink-sql-connector-kudu
+Copyright 2014-2025 The Apache Software Foundation
+
+This product includes software developed at
+The Apache Software Foundation (http://www.apache.org/).
+
+This project bundles the following dependencies under the Apache Software License 2.0. (http://www.apache.org/licenses/LICENSE-2.0.txt)
+
+ - org.apache.kudu:kudu-client:1.17.1
+ - commons-codec:commons-codec:1.17.1
+
+This project bundles the following dependencies under the BSD-3 license (https://opensource.org/license/BSD-3-Clause).
+
+- com.stumbleupon:async:1.4.1
