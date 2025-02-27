@@ -20,6 +20,7 @@ package org.apache.flink.connector.kudu.source.enumerator;
 import org.apache.flink.connector.kudu.source.split.KuduSourceSplit;
 
 import java.io.Serializable;
+import java.util.ArrayList;
 import java.util.List;
 
 /** The class storing state information for {@link KuduSourceEnumerator}. */
@@ -36,6 +37,10 @@ public class KuduSourceEnumeratorState implements Serializable {
         this.lastEndTimestamp = lastEndTimestamp;
         this.unassigned = unassigned;
         this.pending = pending;
+    }
+
+    public static KuduSourceEnumeratorState empty() {
+        return new KuduSourceEnumeratorState(-1L, new ArrayList<>(), new ArrayList<>());
     }
 
     long getLastEndTimestamp() {

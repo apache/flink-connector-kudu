@@ -24,11 +24,11 @@ import java.io.IOException;
 /** The class that serializes and deserializes {@link KuduSourceSplit}. */
 public class KuduSourceSplitSerializer implements SimpleVersionedSerializer<KuduSourceSplit> {
 
-    private static final int VERSION = 1; // Versioning for future changes
+    private static final int CURRENT_VERSION = 1; // Versioning for future changes
 
     @Override
     public int getVersion() {
-        return VERSION;
+        return CURRENT_VERSION;
     }
 
     @Override
@@ -42,7 +42,7 @@ public class KuduSourceSplitSerializer implements SimpleVersionedSerializer<Kudu
 
     @Override
     public KuduSourceSplit deserialize(int version, byte[] serialized) throws IOException {
-        if (version != VERSION) {
+        if (version != CURRENT_VERSION) {
             throw new IllegalArgumentException("Unsupported version: " + version);
         }
         if (serialized == null || serialized.length == 0) {
