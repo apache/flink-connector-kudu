@@ -26,7 +26,6 @@ import org.apache.flink.connector.testutils.source.reader.TestingSplitEnumerator
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -75,7 +74,7 @@ public class KuduSourceEnumeratorTest {
         KuduSourceEnumeratorState state = new KuduSourceEnumeratorState(1L, unassigned, pending);
 
         return new KuduSourceEnumerator(
-                tableInfo, readerConfig, Duration.ofSeconds(1), context, state);
+                tableInfo, readerConfig, null, context, state);
     }
 
     @Test

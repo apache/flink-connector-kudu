@@ -17,11 +17,13 @@
 
 package org.apache.flink.connector.kudu.source.enumerator;
 
+import org.apache.flink.api.connector.source.Boundedness;
 import org.apache.flink.api.connector.source.SourceEvent;
 import org.apache.flink.api.connector.source.SplitEnumerator;
 import org.apache.flink.api.connector.source.SplitEnumeratorContext;
 import org.apache.flink.connector.kudu.connector.KuduTableInfo;
 import org.apache.flink.connector.kudu.connector.reader.KuduReaderConfig;
+import org.apache.flink.connector.kudu.source.config.ContinuousUnBoundingSettings;
 import org.apache.flink.connector.kudu.source.split.KuduSourceSplit;
 import org.apache.flink.connector.kudu.source.split.SplitFinishedEvent;
 
@@ -32,10 +34,10 @@ import org.slf4j.LoggerFactory;
 import javax.annotation.Nullable;
 
 import java.io.IOException;
-import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
@@ -70,9 +72,10 @@ public class KuduSourceEnumerator
     private static final Logger LOG = LoggerFactory.getLogger(KuduSourceEnumerator.class);
 
     private final SplitEnumeratorContext<KuduSourceSplit> context;
+    private final Boundedness boundedness;
     private final List<Integer> readersAwaitingSplit;
-    private final Duration period;
     private final KuduSplitGenerator splitGenerator;
+    private final @Nullable ContinuousUnBoundingSettings continuousUnBoundingSettings;
 
     private long lastEndTimestamp;
     private final List<KuduSourceSplit> unassigned;
@@ -81,18 +84,22 @@ public class KuduSourceEnumerator
     public KuduSourceEnumerator(
             KuduTableInfo tableInfo,
             KuduReaderConfig readerConfig,
-            Duration period,
+            ContinuousUnBoundingSettings continuousUnBoundingSettings,
             SplitEnumeratorContext<KuduSourceSplit> context) {
-        this(tableInfo, readerConfig, period, context, KuduSourceEnumeratorState.empty());
+        this(tableInfo, readerConfig, continuousUnBoundingSettings, context, KuduSourceEnumeratorState.empty());
     }
 
     public KuduSourceEnumerator(
             KuduTableInfo tableInfo,
             KuduReaderConfig readerConfig,
-            Duration period,
+            ContinuousUnBoundingSettings continuousUnBoundingSettings,
             SplitEnumeratorContext<KuduSourceSplit> context,
             KuduSourceEnumeratorState enumState) {
-        this.period = checkNotNull(period);
+        this.continuousUnBoundingSettings = continuousUnBoundingSettings;
+        this.boundedness =
+                Objects.isNull(continuousUnBoundingSettings)
+                        ? Boundedness.BOUNDED
+                        : Boundedness.CONTINUOUS_UNBOUNDED;
         this.context = checkNotNull(context);
         this.readersAwaitingSplit = new ArrayList<>();
         this.unassigned = enumState.getUnassigned();
@@ -103,11 +110,17 @@ public class KuduSourceEnumerator
 
     @Override
     public void start() {
-        context.callAsync(
-                () -> enumerateNewSplits(() -> pending.isEmpty() && unassigned.isEmpty()),
-                this::assignSplits,
-                0,
-                period.toMillis());
+        if (boundedness == Boundedness.CONTINUOUS_UNBOUNDED
+                && Objects.nonNull(continuousUnBoundingSettings)) {
+            context.callAsync(
+                    () -> enumerateNewSplits(() -> pending.isEmpty() && unassigned.isEmpty()),
+                    this::assignSplits,
+                    0,
+                    continuousUnBoundingSettings.getPeriod().toMillis());
+        } else {
+            unassigned.addAll(enumerateNewSplits(() -> true));
+        }
+
     }
 
     @Override
