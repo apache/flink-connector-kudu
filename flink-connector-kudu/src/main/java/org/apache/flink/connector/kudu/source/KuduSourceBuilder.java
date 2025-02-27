@@ -24,6 +24,7 @@ import org.apache.flink.connector.kudu.connector.reader.KuduReaderConfig;
 import java.time.Duration;
 
 import static org.apache.flink.util.Preconditions.checkArgument;
+import static org.apache.flink.util.Preconditions.checkNotNull;
 
 /**
  * Builder to construct {@link KuduSource}.
@@ -58,10 +59,10 @@ public class KuduSourceBuilder<OUT> {
     }
 
     public KuduSource<OUT> build() {
-        checkArgument(tableInfo != null, "Table info must be provided.");
-        checkArgument(readerConfig != null, "Reader config must be provided.");
-        checkArgument(rowResultConverter != null, "RowResultConverter must be provided.");
-        checkArgument(period != null, "Period must be provided.");
+        checkNotNull(tableInfo, "Table info must be provided.");
+        checkNotNull(readerConfig, "Reader config must be provided.");
+        checkNotNull(rowResultConverter, "RowResultConverter must be provided.");
+        checkNotNull(period, "Period must be provided.");
 
         return new KuduSource<>(readerConfig, tableInfo, rowResultConverter, period);
     }

@@ -41,6 +41,8 @@ import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 
+import static org.apache.flink.shaded.guava30.com.google.common.base.Preconditions.checkNotNull;
+
 /**
  * The Kudu source enumerator is responsible for periodically discovering and assigning new splits
  * when possible.
@@ -70,11 +72,20 @@ public class KuduSourceEnumerator
 
     private final SplitEnumeratorContext<KuduSourceSplit> context;
     private final List<Integer> readersAwaitingSplit;
-    private final List<KuduSourceSplit> unassigned;
-    private final List<KuduSourceSplit> pending;
     private final Duration period;
     private final KuduSplitGenerator splitGenerator;
+
     private long lastEndTimestamp;
+    private final List<KuduSourceSplit> unassigned;
+    private final List<KuduSourceSplit> pending;
+
+    public KuduSourceEnumerator(
+            KuduTableInfo tableInfo,
+            KuduReaderConfig readerConfig,
+            Duration period,
+            SplitEnumeratorContext<KuduSourceSplit> context) {
+        this(tableInfo, readerConfig, period, context, KuduSourceEnumeratorState.empty());
+    }
 
     public KuduSourceEnumerator(
             KuduTableInfo tableInfo,
@@ -82,22 +93,22 @@ public class KuduSourceEnumerator
             Duration period,
             SplitEnumeratorContext<KuduSourceSplit> context,
             KuduSourceEnumeratorState enumState) {
-        this.period = period;
-        this.context = context;
+        this.period = checkNotNull(period);
+        this.context = checkNotNull(context);
         this.readersAwaitingSplit = new ArrayList<>();
-        this.unassigned = enumState == null ? new ArrayList<>() : enumState.getUnassigned();
-        this.pending = enumState == null ? new ArrayList<>() : enumState.getPending();
+        this.unassigned = enumState.getUnassigned();
+        this.pending = enumState.getPending();
         this.splitGenerator = new KuduSplitGenerator(readerConfig, tableInfo);
-        this.lastEndTimestamp = enumState == null ? -1L : enumState.getLastEndTimestamp();
+        this.lastEndTimestamp = enumState.getLastEndTimestamp();
     }
 
     @Override
     public void start() {
         context.callAsync(
-                () -> this.enumerateNewSplits(() -> pending.isEmpty() && unassigned.isEmpty()),
+                () -> enumerateNewSplits(() -> pending.isEmpty() && unassigned.isEmpty()),
                 this::assignSplits,
                 0,
-                this.period.toMillis());
+                period.toMillis());
     }
 
     @Override
@@ -153,20 +164,20 @@ public class KuduSourceEnumerator
     // Outstanding meaning that there are no pending splits, and no enumerated but not assigned
     // splits for the
     // current period.
-    private List<KuduSourceSplit> enumerateNewSplits(@Nonnull Supplier<Boolean> shouldGenerate) {
-        if (shouldGenerate.get() == Boolean.FALSE) {
+    private List<KuduSourceSplit> enumerateNewSplits(Supplier<Boolean> shouldGenerate) {
+        if (!shouldGenerate.get()) {
             return null;
         }
         List<KuduSourceSplit> newSplits;
 
         if (isFirstSplitGeneration()) {
-            this.lastEndTimestamp = getCurrentHybridTime();
-            newSplits = this.splitGenerator.generateFullScanSplits(this.lastEndTimestamp);
+            lastEndTimestamp = getCurrentHybridTime();
+            newSplits = splitGenerator.generateFullScanSplits(lastEndTimestamp);
         } else {
-            long startHT = this.lastEndTimestamp;
+            long startHT = lastEndTimestamp;
             long endHT = getCurrentHybridTime();
-            newSplits = this.splitGenerator.generateIncrementalSplits(startHT, endHT);
-            this.lastEndTimestamp = endHT;
+            newSplits = splitGenerator.generateIncrementalSplits(startHT, endHT);
+            lastEndTimestamp = endHT;
         }
 
         return newSplits;
@@ -179,7 +190,7 @@ public class KuduSourceEnumerator
         }
 
         if (splits != null) {
-            this.unassigned.addAll(splits);
+            unassigned.addAll(splits);
         }
         assignSplitsToReaders();
     }
@@ -220,11 +231,10 @@ public class KuduSourceEnumerator
 
     // Helper method to get the current Hybrid Time
     private long getCurrentHybridTime() {
-        long fromMicros = TimeUnit.MILLISECONDS.toMicros(System.currentTimeMillis());
-        return HybridTimeUtil.physicalAndLogicalToHTTimestamp(fromMicros, 0) + 1;
+        return HybridTimeUtil.clockTimestampToHTTimestamp(System.currentTimeMillis(), TimeUnit.MILLISECONDS);
     }
 
     private Boolean isFirstSplitGeneration() {
-        return this.lastEndTimestamp == -1L;
+        return lastEndTimestamp == -1L;
     }
 }

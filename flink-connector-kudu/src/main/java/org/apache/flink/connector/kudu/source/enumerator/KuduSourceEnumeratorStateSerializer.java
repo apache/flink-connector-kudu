@@ -33,12 +33,12 @@ import java.util.List;
 public class KuduSourceEnumeratorStateSerializer
         implements SimpleVersionedSerializer<KuduSourceEnumeratorState> {
 
-    private static final int VERSION = 1;
+    private static final int CURRENT_VERSION = 1;
     private final KuduSourceSplitSerializer splitSerializer = new KuduSourceSplitSerializer();
 
     @Override
     public int getVersion() {
-        return VERSION;
+        return CURRENT_VERSION;
     }
 
     @Override
@@ -57,7 +57,7 @@ public class KuduSourceEnumeratorStateSerializer
     @Override
     public KuduSourceEnumeratorState deserialize(int version, byte[] serialized)
             throws IOException {
-        if (version != VERSION) {
+        if (version != CURRENT_VERSION) {
             throw new IllegalArgumentException("Unsupported version: " + version);
         }
 
@@ -89,7 +89,7 @@ public class KuduSourceEnumeratorStateSerializer
             int length = in.readInt();
             byte[] splitBytes = new byte[length];
             in.readFully(splitBytes);
-            splits.add(splitSerializer.deserialize(VERSION, splitBytes));
+            splits.add(splitSerializer.deserialize(CURRENT_VERSION, splitBytes));
         }
         return splits;
     }
