@@ -97,7 +97,7 @@ public class KuduSource<OUT> implements Source<OUT, KuduSourceSplit, KuduSourceE
     @Override
     public SplitEnumerator<KuduSourceSplit, KuduSourceEnumeratorState> createEnumerator(
             SplitEnumeratorContext<KuduSourceSplit> enumContext) {
-        return new KuduSourceEnumerator(tableInfo, readerConfig, period, enumContext);
+        return new KuduSourceEnumerator(tableInfo, readerConfig, continuousUnBoundingSettings, enumContext);
     }
 
     @Override
@@ -105,7 +105,7 @@ public class KuduSource<OUT> implements Source<OUT, KuduSourceSplit, KuduSourceE
             SplitEnumeratorContext<KuduSourceSplit> enumContext,
             KuduSourceEnumeratorState checkpoint)
             throws Exception {
-        return new KuduSourceEnumerator(tableInfo, readerConfig, period, enumContext, checkpoint);
+        return new KuduSourceEnumerator(tableInfo, readerConfig, continuousUnBoundingSettings, enumContext, checkpoint);
     }
 
     @Override

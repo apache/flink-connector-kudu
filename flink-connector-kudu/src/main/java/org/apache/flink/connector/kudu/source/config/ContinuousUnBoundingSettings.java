@@ -34,30 +34,21 @@ import static org.apache.flink.util.Preconditions.checkNotNull;
 public class ContinuousUnBoundingSettings implements Serializable {
     private static final long serialVersionUID = 1L;
 
-    private final Duration initialDiscoveryDelay;
-    private final Duration discoveryInterval;
+    private final Duration period;
 
-    public ContinuousUnBoundingSettings(
-            Duration initialDiscoveryDelay, Duration discoveryInterval) {
-        this.initialDiscoveryDelay = initialDiscoveryDelay;
-        this.discoveryInterval = checkNotNull(discoveryInterval);
+    public ContinuousUnBoundingSettings(Duration discoveryInterval) {
+        this.period = checkNotNull(discoveryInterval);
     }
 
-    public Duration getDiscoveryInterval() {
-        return discoveryInterval;
-    }
-
-    public Duration getInitialDiscoveryDelay() {
-        return initialDiscoveryDelay;
+    public Duration getPeriod() {
+        return period;
     }
 
     @Override
     public String toString() {
         return "ContinuousUnBoundingSettings{"
-                + "initialDiscoveryDelay="
-                + initialDiscoveryDelay
-                + ", discoveryInterval="
-                + discoveryInterval
+                + "period="
+                + period
                 + '}';
     }
 
@@ -72,12 +63,11 @@ public class ContinuousUnBoundingSettings implements Serializable {
         }
 
         ContinuousUnBoundingSettings that = (ContinuousUnBoundingSettings) object;
-        return Objects.equals(initialDiscoveryDelay, that.initialDiscoveryDelay)
-                && Objects.equals(discoveryInterval, that.discoveryInterval);
+        return Objects.equals(period, that.period);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(initialDiscoveryDelay, discoveryInterval);
+        return Objects.hash(period);
     }
 }
