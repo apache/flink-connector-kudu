@@ -20,10 +20,12 @@ package org.apache.flink.connector.kudu.source;
 import org.apache.flink.connector.kudu.connector.KuduTableInfo;
 import org.apache.flink.connector.kudu.connector.converter.RowResultConverter;
 import org.apache.flink.connector.kudu.connector.reader.KuduReaderConfig;
+import org.apache.flink.connector.kudu.source.config.ContinuousUnBoundingSettings;
+
+import javax.annotation.Nullable;
 
 import java.time.Duration;
 
-import static org.apache.flink.util.Preconditions.checkArgument;
 import static org.apache.flink.util.Preconditions.checkNotNull;
 
 /**
@@ -36,6 +38,7 @@ public class KuduSourceBuilder<OUT> {
     private KuduTableInfo tableInfo;
     private RowResultConverter<OUT> rowResultConverter;
     private Duration period;
+    private @Nullable ContinuousUnBoundingSettings continuousUnBoundingSettings;
 
     public KuduSourceBuilder<OUT> setTableInfo(KuduTableInfo tableInfo) {
         this.tableInfo = tableInfo;
@@ -58,12 +61,18 @@ public class KuduSourceBuilder<OUT> {
         return this;
     }
 
+    public KuduSourceBuilder<OUT> setContinuousUnBoundingSettings(
+            ContinuousUnBoundingSettings continuousUnBoundingSettings) {
+        this.continuousUnBoundingSettings = continuousUnBoundingSettings;
+        return this;
+    }
+
     public KuduSource<OUT> build() {
         checkNotNull(tableInfo, "Table info must be provided.");
         checkNotNull(readerConfig, "Reader config must be provided.");
         checkNotNull(rowResultConverter, "RowResultConverter must be provided.");
         checkNotNull(period, "Period must be provided.");
 
-        return new KuduSource<>(readerConfig, tableInfo, rowResultConverter, period);
+        return new KuduSource<>(readerConfig, tableInfo, rowResultConverter, period, continuousUnBoundingSettings);
     }
 }

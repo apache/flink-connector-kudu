@@ -28,6 +28,7 @@ import org.apache.flink.configuration.Configuration;
 import org.apache.flink.connector.kudu.connector.KuduTableInfo;
 import org.apache.flink.connector.kudu.connector.converter.RowResultConverter;
 import org.apache.flink.connector.kudu.connector.reader.KuduReaderConfig;
+import org.apache.flink.connector.kudu.source.config.ContinuousUnBoundingSettings;
 import org.apache.flink.connector.kudu.source.enumerator.KuduSourceEnumerator;
 import org.apache.flink.connector.kudu.source.enumerator.KuduSourceEnumeratorState;
 import org.apache.flink.connector.kudu.source.enumerator.KuduSourceEnumeratorStateSerializer;
@@ -37,7 +38,10 @@ import org.apache.flink.connector.kudu.source.split.KuduSourceSplit;
 import org.apache.flink.connector.kudu.source.split.KuduSourceSplitSerializer;
 import org.apache.flink.core.io.SimpleVersionedSerializer;
 
+import javax.annotation.Nullable;
+
 import java.time.Duration;
+import java.util.Objects;
 
 /**
  * A continuous, unbounded Flink {@link Source} for reading data from Apache Kudu. It uses
@@ -58,6 +62,9 @@ import java.time.Duration;
  */
 @PublicEvolving
 public class KuduSource<OUT> implements Source<OUT, KuduSourceSplit, KuduSourceEnumeratorState> {
+    private final Boundedness boundedness;
+    private final @Nullable ContinuousUnBoundingSettings continuousUnBoundingSettings;
+
     private final KuduReaderConfig readerConfig;
     private final KuduTableInfo tableInfo;
     private final RowResultConverter<OUT> rowResultConverter;
@@ -69,17 +76,22 @@ public class KuduSource<OUT> implements Source<OUT, KuduSourceSplit, KuduSourceE
             KuduReaderConfig readerConfig,
             KuduTableInfo tableInfo,
             RowResultConverter<OUT> rowResultConverter,
-            Duration period) {
+            Duration period,
+            @Nullable ContinuousUnBoundingSettings continuousUnBoundingSettings) {
         this.tableInfo = tableInfo;
         this.readerConfig = readerConfig;
         this.rowResultConverter = rowResultConverter;
         this.period = period;
         this.configuration = new Configuration();
+        this.continuousUnBoundingSettings = continuousUnBoundingSettings;
+        this.boundedness = Objects.isNull(continuousUnBoundingSettings)
+                ? Boundedness.BOUNDED
+                : Boundedness.CONTINUOUS_UNBOUNDED;
     }
 
     @Override
     public Boundedness getBoundedness() {
-        return Boundedness.CONTINUOUS_UNBOUNDED;
+        return boundedness;
     }
 
     @Override
