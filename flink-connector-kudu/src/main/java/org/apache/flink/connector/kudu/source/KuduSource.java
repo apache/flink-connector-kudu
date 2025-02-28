@@ -28,7 +28,7 @@ import org.apache.flink.configuration.Configuration;
 import org.apache.flink.connector.kudu.connector.KuduTableInfo;
 import org.apache.flink.connector.kudu.connector.converter.RowResultConverter;
 import org.apache.flink.connector.kudu.connector.reader.KuduReaderConfig;
-import org.apache.flink.connector.kudu.source.config.ContinuousUnBoundingSettings;
+import org.apache.flink.connector.kudu.source.config.ContinuousBoundingSettings;
 import org.apache.flink.connector.kudu.source.enumerator.KuduSourceEnumerator;
 import org.apache.flink.connector.kudu.source.enumerator.KuduSourceEnumeratorState;
 import org.apache.flink.connector.kudu.source.enumerator.KuduSourceEnumeratorStateSerializer;
@@ -37,11 +37,6 @@ import org.apache.flink.connector.kudu.source.reader.KuduSourceSplitReader;
 import org.apache.flink.connector.kudu.source.split.KuduSourceSplit;
 import org.apache.flink.connector.kudu.source.split.KuduSourceSplitSerializer;
 import org.apache.flink.core.io.SimpleVersionedSerializer;
-
-import javax.annotation.Nullable;
-
-import java.time.Duration;
-import java.util.Objects;
 
 /**
  * A continuous, unbounded Flink {@link Source} for reading data from Apache Kudu. It uses
@@ -53,51 +48,45 @@ import java.util.Objects;
  *   <li>{@link KuduReaderConfig} - Configures the Kudu connection, including master addresses.
  *   <li>{@link KuduTableInfo} - Specifies the target Kudu table, including its name and schema
  *       details.
+ *   <li>{@link ContinuousBoundingSettings} - Defines the boundedness and polling interval, i.e.,
+ *       the time between consecutive scans.
  *   <li>{@link RowResultConverter} - Converts Kudu's {@code RowResult} into the desired output type
  *       {@code OUT}.
- *   <li>{@link Duration} - Defines the polling interval, i.e., the time between consecutive scans.
  * </ul>
  *
  * @param <OUT> The type of the records produced by this source.
  */
 @PublicEvolving
 public class KuduSource<OUT> implements Source<OUT, KuduSourceSplit, KuduSourceEnumeratorState> {
-    private final Boundedness boundedness;
-    private final @Nullable ContinuousUnBoundingSettings continuousUnBoundingSettings;
-
     private final KuduReaderConfig readerConfig;
     private final KuduTableInfo tableInfo;
+    private final ContinuousBoundingSettings continuousBoundingSettings;
     private final RowResultConverter<OUT> rowResultConverter;
-    private final Duration period;
 
     private final Configuration configuration;
 
     KuduSource(
             KuduReaderConfig readerConfig,
             KuduTableInfo tableInfo,
-            RowResultConverter<OUT> rowResultConverter,
-            Duration period,
-            @Nullable ContinuousUnBoundingSettings continuousUnBoundingSettings) {
+            ContinuousBoundingSettings continuousBoundingSettings,
+            RowResultConverter<OUT> rowResultConverter) {
         this.tableInfo = tableInfo;
         this.readerConfig = readerConfig;
         this.rowResultConverter = rowResultConverter;
-        this.period = period;
+        this.continuousBoundingSettings = continuousBoundingSettings;
         this.configuration = new Configuration();
-        this.continuousUnBoundingSettings = continuousUnBoundingSettings;
-        this.boundedness = Objects.isNull(continuousUnBoundingSettings)
-                ? Boundedness.BOUNDED
-                : Boundedness.CONTINUOUS_UNBOUNDED;
     }
 
     @Override
     public Boundedness getBoundedness() {
-        return boundedness;
+        return continuousBoundingSettings.getBoundedness();
     }
 
     @Override
     public SplitEnumerator<KuduSourceSplit, KuduSourceEnumeratorState> createEnumerator(
             SplitEnumeratorContext<KuduSourceSplit> enumContext) {
-        return new KuduSourceEnumerator(tableInfo, readerConfig, continuousUnBoundingSettings, enumContext);
+        return new KuduSourceEnumerator(
+                tableInfo, readerConfig, continuousBoundingSettings, enumContext);
     }
 
     @Override
@@ -105,7 +94,8 @@ public class KuduSource<OUT> implements Source<OUT, KuduSourceSplit, KuduSourceE
             SplitEnumeratorContext<KuduSourceSplit> enumContext,
             KuduSourceEnumeratorState checkpoint)
             throws Exception {
-        return new KuduSourceEnumerator(tableInfo, readerConfig, continuousUnBoundingSettings, enumContext, checkpoint);
+        return new KuduSourceEnumerator(
+                tableInfo, readerConfig, continuousBoundingSettings, enumContext, checkpoint);
     }
 
     @Override

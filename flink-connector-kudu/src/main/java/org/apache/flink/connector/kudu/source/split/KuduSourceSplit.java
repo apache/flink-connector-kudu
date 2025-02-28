@@ -27,8 +27,8 @@ import java.util.Base64;
 public class KuduSourceSplit implements SourceSplit, Serializable {
 
     /**
-     * Serialized byte[] is already compact and Flink-optimized, whereas the
-     * full KuduScanToken object might include unnecessary metadata or complex internal structures.
+     * Serialized byte[] is already compact and Flink-optimized, whereas the full KuduScanToken
+     * object might include unnecessary metadata or complex internal structures.
      */
     private final byte[] serializedScanToken;
 

@@ -20,11 +20,7 @@ package org.apache.flink.connector.kudu.source;
 import org.apache.flink.connector.kudu.connector.KuduTableInfo;
 import org.apache.flink.connector.kudu.connector.converter.RowResultConverter;
 import org.apache.flink.connector.kudu.connector.reader.KuduReaderConfig;
-import org.apache.flink.connector.kudu.source.config.ContinuousUnBoundingSettings;
-
-import javax.annotation.Nullable;
-
-import java.time.Duration;
+import org.apache.flink.connector.kudu.source.config.ContinuousBoundingSettings;
 
 import static org.apache.flink.util.Preconditions.checkNotNull;
 
@@ -37,8 +33,7 @@ public class KuduSourceBuilder<OUT> {
     private KuduReaderConfig readerConfig;
     private KuduTableInfo tableInfo;
     private RowResultConverter<OUT> rowResultConverter;
-    private Duration period;
-    private @Nullable ContinuousUnBoundingSettings continuousUnBoundingSettings;
+    private ContinuousBoundingSettings continuousBoundingSettings;
 
     public KuduSourceBuilder<OUT> setTableInfo(KuduTableInfo tableInfo) {
         this.tableInfo = tableInfo;
@@ -56,14 +51,9 @@ public class KuduSourceBuilder<OUT> {
         return this;
     }
 
-    public KuduSourceBuilder<OUT> setPeriod(Duration period) {
-        this.period = period;
-        return this;
-    }
-
-    public KuduSourceBuilder<OUT> setContinuousUnBoundingSettings(
-            ContinuousUnBoundingSettings continuousUnBoundingSettings) {
-        this.continuousUnBoundingSettings = continuousUnBoundingSettings;
+    public KuduSourceBuilder<OUT> setContinuousBoundingSettings(
+            ContinuousBoundingSettings continuousBoundingSettings) {
+        this.continuousBoundingSettings = continuousBoundingSettings;
         return this;
     }
 
@@ -71,8 +61,9 @@ public class KuduSourceBuilder<OUT> {
         checkNotNull(tableInfo, "Table info must be provided.");
         checkNotNull(readerConfig, "Reader config must be provided.");
         checkNotNull(rowResultConverter, "RowResultConverter must be provided.");
-        checkNotNull(period, "Period must be provided.");
+        checkNotNull(continuousBoundingSettings, "ContinuousBoundingSettings must be provided.");
 
-        return new KuduSource<>(readerConfig, tableInfo, rowResultConverter, period, continuousUnBoundingSettings);
+        return new KuduSource<>(
+                readerConfig, tableInfo, continuousBoundingSettings, rowResultConverter);
     }
 }

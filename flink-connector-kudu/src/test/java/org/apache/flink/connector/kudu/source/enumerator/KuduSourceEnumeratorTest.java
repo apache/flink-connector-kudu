@@ -17,15 +17,19 @@
 
 package org.apache.flink.connector.kudu.source.enumerator;
 
+import org.apache.flink.api.connector.source.Boundedness;
 import org.apache.flink.api.connector.source.SplitEnumeratorContext;
 import org.apache.flink.connector.kudu.connector.KuduTableInfo;
 import org.apache.flink.connector.kudu.connector.reader.KuduReaderConfig;
+import org.apache.flink.connector.kudu.source.config.ContinuousBoundingSettings;
+import org.apache.flink.connector.kudu.source.config.ContinuousBoundingSettingsBuilder;
 import org.apache.flink.connector.kudu.source.split.KuduSourceSplit;
 import org.apache.flink.connector.testutils.source.reader.TestingSplitEnumeratorContext;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -63,6 +67,11 @@ public class KuduSourceEnumeratorTest {
     private KuduSourceEnumerator createEnumerator(SplitEnumeratorContext<KuduSourceSplit> context) {
         KuduTableInfo tableInfo = KuduTableInfo.forTable("table");
         KuduReaderConfig readerConfig = KuduReaderConfig.Builder.setMasters("master").build();
+        ContinuousBoundingSettings continuousBoundingSettings =
+                new ContinuousBoundingSettingsBuilder()
+                        .setBoundedness(Boundedness.BOUNDED)
+                        .setPeriod(Duration.ofSeconds(1))
+                        .build();
 
         byte[] token = {1, 2, 3, 4, 5};
         split = new KuduSourceSplit(token);
@@ -74,7 +83,7 @@ public class KuduSourceEnumeratorTest {
         KuduSourceEnumeratorState state = new KuduSourceEnumeratorState(1L, unassigned, pending);
 
         return new KuduSourceEnumerator(
-                tableInfo, readerConfig, null, context, state);
+                tableInfo, readerConfig, continuousBoundingSettings, context, state);
     }
 
     @Test

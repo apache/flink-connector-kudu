@@ -20,8 +20,10 @@ package org.apache.flink.connector.kudu.source;
 import org.apache.flink.api.common.JobID;
 import org.apache.flink.api.common.eventtime.WatermarkStrategy;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
+import org.apache.flink.api.connector.source.Boundedness;
 import org.apache.flink.client.program.ClusterClient;
 import org.apache.flink.connector.kudu.connector.converter.RowResultRowConverter;
+import org.apache.flink.connector.kudu.source.config.ContinuousBoundingSettingsBuilder;
 import org.apache.flink.connector.kudu.testutils.KuduSourceITBase;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.api.functions.sink.SinkFunction;
@@ -56,10 +58,14 @@ public class KuduSourceTest extends KuduSourceTestBase implements KuduSourceITBa
                 new KuduSourceBuilder<Row>()
                         .setTableInfo(getTableInfo())
                         .setRowResultConverter(new RowResultRowConverter())
-                        .setPeriod(Duration.ofSeconds(1));
+                        .setContinuousBoundingSettings(
+                                new ContinuousBoundingSettingsBuilder()
+                                        .setBoundedness(Boundedness.BOUNDED)
+                                        .setPeriod(Duration.ofSeconds(1))
+                                        .build());
 
         assertThatThrownBy(builder::build)
-                .isInstanceOf(IllegalArgumentException.class)
+                .isInstanceOf(NullPointerException.class)
                 .hasMessageContaining("Reader config");
     }
 
@@ -69,10 +75,14 @@ public class KuduSourceTest extends KuduSourceTestBase implements KuduSourceITBa
                 new KuduSourceBuilder<Row>()
                         .setReaderConfig(getReaderConfig())
                         .setRowResultConverter(new RowResultRowConverter())
-                        .setPeriod(Duration.ofSeconds(1));
+                        .setContinuousBoundingSettings(
+                                new ContinuousBoundingSettingsBuilder()
+                                        .setBoundedness(Boundedness.BOUNDED)
+                                        .setPeriod(Duration.ofSeconds(1))
+                                        .build());
 
         assertThatThrownBy(builder::build)
-                .isInstanceOf(IllegalArgumentException.class)
+                .isInstanceOf(NullPointerException.class)
                 .hasMessageContaining("Table info");
     }
 
@@ -82,15 +92,19 @@ public class KuduSourceTest extends KuduSourceTestBase implements KuduSourceITBa
                 new KuduSourceBuilder<Row>()
                         .setReaderConfig(getReaderConfig())
                         .setTableInfo(getTableInfo())
-                        .setPeriod(Duration.ofSeconds(1));
+                        .setContinuousBoundingSettings(
+                                new ContinuousBoundingSettingsBuilder()
+                                        .setBoundedness(Boundedness.BOUNDED)
+                                        .setPeriod(Duration.ofSeconds(1))
+                                        .build());
 
         assertThatThrownBy(builder::build)
-                .isInstanceOf(IllegalArgumentException.class)
+                .isInstanceOf(NullPointerException.class)
                 .hasMessageContaining("RowResultConverter");
     }
 
     @Test
-    void testNonExistentPeriod() {
+    void testNonExistentContinuousBoundingSettings() {
         KuduSourceBuilder<Row> builder =
                 new KuduSourceBuilder<Row>()
                         .setReaderConfig(getReaderConfig())
@@ -98,8 +112,8 @@ public class KuduSourceTest extends KuduSourceTestBase implements KuduSourceITBa
                         .setRowResultConverter(new RowResultRowConverter());
 
         assertThatThrownBy(builder::build)
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("Period");
+                .isInstanceOf(NullPointerException.class)
+                .hasMessageContaining("ContinuousBoundingSettings");
     }
 
     @Test
@@ -112,7 +126,11 @@ public class KuduSourceTest extends KuduSourceTestBase implements KuduSourceITBa
                         .setReaderConfig(getReaderConfig())
                         .setTableInfo(getTableInfo())
                         .setRowResultConverter(new RowResultRowConverter())
-                        .setPeriod(Duration.ofSeconds(1))
+                        .setContinuousBoundingSettings(
+                                new ContinuousBoundingSettingsBuilder()
+                                        .setBoundedness(Boundedness.BOUNDED)
+                                        .setPeriod(Duration.ofSeconds(1))
+                                        .build())
                         .build();
 
         env.fromSource(kuduSource, WatermarkStrategy.noWatermarks(), "KuduSource")

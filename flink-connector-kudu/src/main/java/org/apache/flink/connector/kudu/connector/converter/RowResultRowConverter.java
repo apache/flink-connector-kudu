@@ -19,7 +19,6 @@ package org.apache.flink.connector.kudu.connector.converter;
 
 import org.apache.flink.annotation.Internal;
 import org.apache.flink.types.Row;
-import org.apache.flink.types.RowKind;
 
 import org.apache.kudu.Schema;
 import org.apache.kudu.client.RowResult;
@@ -32,9 +31,6 @@ public class RowResultRowConverter implements RowResultConverter<Row> {
         Schema schema = row.getColumnProjection();
 
         Row values = new Row(schema.getColumnCount());
-        if (row.hasIsDeleted() && row.isDeleted()) {
-            values.setKind(RowKind.DELETE);
-        }
         schema.getColumns()
                 .forEach(
                         column -> {

@@ -23,7 +23,7 @@ import org.apache.flink.api.connector.source.SplitEnumerator;
 import org.apache.flink.api.connector.source.SplitEnumeratorContext;
 import org.apache.flink.connector.kudu.connector.KuduTableInfo;
 import org.apache.flink.connector.kudu.connector.reader.KuduReaderConfig;
-import org.apache.flink.connector.kudu.source.config.ContinuousUnBoundingSettings;
+import org.apache.flink.connector.kudu.source.config.ContinuousBoundingSettings;
 import org.apache.flink.connector.kudu.source.split.KuduSourceSplit;
 import org.apache.flink.connector.kudu.source.split.SplitFinishedEvent;
 
@@ -42,7 +42,7 @@ import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 
-import static org.apache.flink.shaded.guava30.com.google.common.base.Preconditions.checkNotNull;
+import static org.apache.flink.util.Preconditions.checkNotNull;
 
 /**
  * The Kudu source enumerator is responsible for periodically discovering and assigning new splits
@@ -72,10 +72,9 @@ public class KuduSourceEnumerator
     private static final Logger LOG = LoggerFactory.getLogger(KuduSourceEnumerator.class);
 
     private final SplitEnumeratorContext<KuduSourceSplit> context;
-    private final Boundedness boundedness;
     private final List<Integer> readersAwaitingSplit;
     private final KuduSplitGenerator splitGenerator;
-    private final @Nullable ContinuousUnBoundingSettings continuousUnBoundingSettings;
+    private final ContinuousBoundingSettings continuousBoundingSettings;
 
     private long lastEndTimestamp;
     private final List<KuduSourceSplit> unassigned;
@@ -84,22 +83,23 @@ public class KuduSourceEnumerator
     public KuduSourceEnumerator(
             KuduTableInfo tableInfo,
             KuduReaderConfig readerConfig,
-            ContinuousUnBoundingSettings continuousUnBoundingSettings,
+            ContinuousBoundingSettings continuousBoundingSettings,
             SplitEnumeratorContext<KuduSourceSplit> context) {
-        this(tableInfo, readerConfig, continuousUnBoundingSettings, context, KuduSourceEnumeratorState.empty());
+        this(
+                tableInfo,
+                readerConfig,
+                continuousBoundingSettings,
+                context,
+                KuduSourceEnumeratorState.empty());
     }
 
     public KuduSourceEnumerator(
             KuduTableInfo tableInfo,
             KuduReaderConfig readerConfig,
-            ContinuousUnBoundingSettings continuousUnBoundingSettings,
+            ContinuousBoundingSettings continuousBoundingSettings,
             SplitEnumeratorContext<KuduSourceSplit> context,
             KuduSourceEnumeratorState enumState) {
-        this.continuousUnBoundingSettings = continuousUnBoundingSettings;
-        this.boundedness =
-                Objects.isNull(continuousUnBoundingSettings)
-                        ? Boundedness.BOUNDED
-                        : Boundedness.CONTINUOUS_UNBOUNDED;
+        this.continuousBoundingSettings = continuousBoundingSettings;
         this.context = checkNotNull(context);
         this.readersAwaitingSplit = new ArrayList<>();
         this.unassigned = enumState.getUnassigned();
@@ -110,17 +110,20 @@ public class KuduSourceEnumerator
 
     @Override
     public void start() {
-        if (boundedness == Boundedness.CONTINUOUS_UNBOUNDED
-                && Objects.nonNull(continuousUnBoundingSettings)) {
+        if (continuousBoundingSettings.getBoundedness() == Boundedness.CONTINUOUS_UNBOUNDED
+                && Objects.nonNull(continuousBoundingSettings.getPeriod())) {
             context.callAsync(
                     () -> enumerateNewSplits(() -> pending.isEmpty() && unassigned.isEmpty()),
                     this::assignSplits,
                     0,
-                    continuousUnBoundingSettings.getPeriod().toMillis());
+                    continuousBoundingSettings.getPeriod().toMillis());
         } else {
-            unassigned.addAll(enumerateNewSplits(() -> true));
+            List<KuduSourceSplit> splits = enumerateNewSplits(() -> true);
+            if (splits != null) {
+                unassigned.addAll(enumerateNewSplits(() -> true));
+                assignSplitsToReaders();
+            }
         }
-
     }
 
     @Override
@@ -243,7 +246,8 @@ public class KuduSourceEnumerator
 
     // Helper method to get the current Hybrid Time
     private long getCurrentHybridTime() {
-        return HybridTimeUtil.clockTimestampToHTTimestamp(System.currentTimeMillis(), TimeUnit.MILLISECONDS);
+        return HybridTimeUtil.clockTimestampToHTTimestamp(
+                System.currentTimeMillis(), TimeUnit.MILLISECONDS);
     }
 
     private Boolean isFirstSplitGeneration() {
