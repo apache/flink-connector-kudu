@@ -20,7 +20,7 @@ package org.apache.flink.connector.kudu.source;
 import org.apache.flink.connector.kudu.connector.KuduTableInfo;
 import org.apache.flink.connector.kudu.connector.converter.RowResultConverter;
 import org.apache.flink.connector.kudu.connector.reader.KuduReaderConfig;
-import org.apache.flink.connector.kudu.source.config.ContinuousBoundingSettings;
+import org.apache.flink.connector.kudu.source.config.BoundednessSettings;
 
 import static org.apache.flink.util.Preconditions.checkNotNull;
 
@@ -33,7 +33,7 @@ public class KuduSourceBuilder<OUT> {
     private KuduReaderConfig readerConfig;
     private KuduTableInfo tableInfo;
     private RowResultConverter<OUT> rowResultConverter;
-    private ContinuousBoundingSettings continuousBoundingSettings;
+    private BoundednessSettings boundednessSettings;
 
     public KuduSourceBuilder<OUT> setTableInfo(KuduTableInfo tableInfo) {
         this.tableInfo = tableInfo;
@@ -52,8 +52,8 @@ public class KuduSourceBuilder<OUT> {
     }
 
     public KuduSourceBuilder<OUT> setContinuousBoundingSettings(
-            ContinuousBoundingSettings continuousBoundingSettings) {
-        this.continuousBoundingSettings = continuousBoundingSettings;
+            BoundednessSettings boundednessSettings) {
+        this.boundednessSettings = boundednessSettings;
         return this;
     }
 
@@ -61,9 +61,8 @@ public class KuduSourceBuilder<OUT> {
         checkNotNull(tableInfo, "Table info must be provided.");
         checkNotNull(readerConfig, "Reader config must be provided.");
         checkNotNull(rowResultConverter, "RowResultConverter must be provided.");
-        checkNotNull(continuousBoundingSettings, "ContinuousBoundingSettings must be provided.");
+        checkNotNull(boundednessSettings, "ContinuousBoundingSettings must be provided.");
 
-        return new KuduSource<>(
-                readerConfig, tableInfo, continuousBoundingSettings, rowResultConverter);
+        return new KuduSource<>(readerConfig, tableInfo, boundednessSettings, rowResultConverter);
     }
 }

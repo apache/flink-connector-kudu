@@ -20,6 +20,8 @@ package org.apache.flink.connector.kudu.source.config;
 import org.apache.flink.annotation.PublicEvolving;
 import org.apache.flink.api.connector.source.Boundedness;
 
+import javax.annotation.Nullable;
+
 import java.io.Serializable;
 import java.time.Duration;
 import java.util.Objects;
@@ -27,23 +29,35 @@ import java.util.Objects;
 import static org.apache.flink.util.Preconditions.checkNotNull;
 
 /**
- * Settings describing how to do continuous data discovery and enumeration for the data source's
- * continuous discovery and streaming mode.
+ * Settings that define whether the data source operates in bounded or continuous unbounded mode
+ * and, if unbounded, specify the discovery interval.
+ *
+ * <p>Key properties:
+ *
+ * <ul>
+ *   <li>{@link Boundedness} - Determines whether the source operates in bounded or unbounded mode.
+ *   <li>{@code discoveryInterval} - Specifies the interval for continuous discovery in unbounded
+ *       mode. This is {@code null} when operating in bounded mode.
+ * </ul>
+ *
+ * <p>When {@code boundedness} is set to {@link Boundedness#BOUNDED}, the source performs a single
+ * snapshot read. When set to {@link Boundedness#CONTINUOUS_UNBOUNDED}, the source continuously
+ * discovers new records based on the configured {@code discoveryInterval}.
  */
 @PublicEvolving
-public class ContinuousBoundingSettings implements Serializable {
+public class BoundednessSettings implements Serializable {
     private static final long serialVersionUID = 1L;
 
     private final Boundedness boundedness;
-    private final Duration period;
+    private @Nullable final Duration discoveryInterval;
 
-    public ContinuousBoundingSettings(Boundedness boundedness, Duration discoveryInterval) {
+    public BoundednessSettings(Boundedness boundedness, @Nullable Duration discoveryInterval) {
         this.boundedness = checkNotNull(boundedness);
-        this.period = checkNotNull(discoveryInterval);
+        this.discoveryInterval = discoveryInterval;
     }
 
-    public Duration getPeriod() {
-        return period;
+    public Duration getDiscoveryInterval() {
+        return discoveryInterval;
     }
 
     public Boundedness getBoundedness() {
@@ -53,8 +67,8 @@ public class ContinuousBoundingSettings implements Serializable {
     @Override
     public String toString() {
         return "ContinuousUnBoundingSettings{"
-                + "period='"
-                + period
+                + "discoveryInterval='"
+                + discoveryInterval
                 + "', boundedness='"
                 + boundedness
                 + "'}";
@@ -70,12 +84,13 @@ public class ContinuousBoundingSettings implements Serializable {
             return false;
         }
 
-        ContinuousBoundingSettings that = (ContinuousBoundingSettings) object;
-        return Objects.equals(period, that.period) && Objects.equals(boundedness, that.boundedness);
+        BoundednessSettings that = (BoundednessSettings) object;
+        return Objects.equals(discoveryInterval, that.discoveryInterval)
+                && Objects.equals(boundedness, that.boundedness);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(period, boundedness);
+        return Objects.hash(discoveryInterval, boundedness);
     }
 }

@@ -23,25 +23,29 @@ import java.time.Duration;
 
 import static org.apache.flink.util.Preconditions.checkNotNull;
 
-/** Builder for the {@link ContinuousBoundingSettings}. */
-public class ContinuousBoundingSettingsBuilder {
+/** Builder for the {@link BoundednessSettings}. */
+public class BoundednessSettingsBuilder {
     private Boundedness boundedness;
-    private Duration period;
+    private Duration discoveryInterval;
 
-    public ContinuousBoundingSettingsBuilder setBoundedness(Boundedness boundedness) {
+    public BoundednessSettingsBuilder setBoundedness(Boundedness boundedness) {
         this.boundedness = boundedness;
         return this;
     }
 
-    public ContinuousBoundingSettingsBuilder setPeriod(Duration period) {
-        this.period = period;
+    public BoundednessSettingsBuilder setDiscoveryInterval(Duration discoveryInterval) {
+        this.discoveryInterval = discoveryInterval;
         return this;
     }
 
-    public ContinuousBoundingSettings build() {
+    public BoundednessSettings build() {
         checkNotNull(boundedness, "Boundedness must be provided.");
-        checkNotNull(period, "Period must be provided.");
+        if (boundedness.equals(Boundedness.CONTINUOUS_UNBOUNDED)) {
+            checkNotNull(
+                    discoveryInterval,
+                    "DiscoveryInterval must be provided in continuous unbounded settings.");
+        }
 
-        return new ContinuousBoundingSettings(boundedness, period);
+        return new BoundednessSettings(boundedness, discoveryInterval);
     }
 }

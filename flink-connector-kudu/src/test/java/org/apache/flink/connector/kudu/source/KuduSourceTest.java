@@ -23,7 +23,7 @@ import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.api.connector.source.Boundedness;
 import org.apache.flink.client.program.ClusterClient;
 import org.apache.flink.connector.kudu.connector.converter.RowResultRowConverter;
-import org.apache.flink.connector.kudu.source.config.ContinuousBoundingSettingsBuilder;
+import org.apache.flink.connector.kudu.source.config.BoundednessSettingsBuilder;
 import org.apache.flink.connector.kudu.testutils.KuduSourceITBase;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.api.functions.sink.SinkFunction;
@@ -59,9 +59,9 @@ public class KuduSourceTest extends KuduSourceTestBase implements KuduSourceITBa
                         .setTableInfo(getTableInfo())
                         .setRowResultConverter(new RowResultRowConverter())
                         .setContinuousBoundingSettings(
-                                new ContinuousBoundingSettingsBuilder()
+                                new BoundednessSettingsBuilder()
                                         .setBoundedness(Boundedness.BOUNDED)
-                                        .setPeriod(Duration.ofSeconds(1))
+                                        .setDiscoveryInterval(Duration.ofSeconds(1))
                                         .build());
 
         assertThatThrownBy(builder::build)
@@ -76,9 +76,9 @@ public class KuduSourceTest extends KuduSourceTestBase implements KuduSourceITBa
                         .setReaderConfig(getReaderConfig())
                         .setRowResultConverter(new RowResultRowConverter())
                         .setContinuousBoundingSettings(
-                                new ContinuousBoundingSettingsBuilder()
+                                new BoundednessSettingsBuilder()
                                         .setBoundedness(Boundedness.BOUNDED)
-                                        .setPeriod(Duration.ofSeconds(1))
+                                        .setDiscoveryInterval(Duration.ofSeconds(1))
                                         .build());
 
         assertThatThrownBy(builder::build)
@@ -93,9 +93,9 @@ public class KuduSourceTest extends KuduSourceTestBase implements KuduSourceITBa
                         .setReaderConfig(getReaderConfig())
                         .setTableInfo(getTableInfo())
                         .setContinuousBoundingSettings(
-                                new ContinuousBoundingSettingsBuilder()
+                                new BoundednessSettingsBuilder()
                                         .setBoundedness(Boundedness.BOUNDED)
-                                        .setPeriod(Duration.ofSeconds(1))
+                                        .setDiscoveryInterval(Duration.ofSeconds(1))
                                         .build());
 
         assertThatThrownBy(builder::build)
@@ -117,7 +117,7 @@ public class KuduSourceTest extends KuduSourceTestBase implements KuduSourceITBa
     }
 
     @Test
-    public void testRecordsFromSource(@InjectClusterClient ClusterClient<?> client)
+    public void testRecordsFromSourceUnbounded(@InjectClusterClient ClusterClient<?> client)
             throws Exception {
         StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
 
@@ -127,9 +127,9 @@ public class KuduSourceTest extends KuduSourceTestBase implements KuduSourceITBa
                         .setTableInfo(getTableInfo())
                         .setRowResultConverter(new RowResultRowConverter())
                         .setContinuousBoundingSettings(
-                                new ContinuousBoundingSettingsBuilder()
-                                        .setBoundedness(Boundedness.BOUNDED)
-                                        .setPeriod(Duration.ofSeconds(1))
+                                new BoundednessSettingsBuilder()
+                                        .setBoundedness(Boundedness.CONTINUOUS_UNBOUNDED)
+                                        .setDiscoveryInterval(Duration.ofSeconds(1))
                                         .build())
                         .build();
 
@@ -144,6 +144,31 @@ public class KuduSourceTest extends KuduSourceTestBase implements KuduSourceITBa
         waitExpectation(() -> collectedRecords.size() == 20);
         assertThat(collectedRecords.size()).isEqualTo(20);
         client.cancel(jobID);
+    }
+
+    @Test
+    public void testRecordsFromSourceBounded(@InjectClusterClient ClusterClient<?> client)
+            throws Exception {
+        StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
+        env.setParallelism(1);
+
+        KuduSource<Row> kuduSource =
+                new KuduSourceBuilder<Row>()
+                        .setReaderConfig(getReaderConfig())
+                        .setTableInfo(getTableInfo())
+                        .setRowResultConverter(new RowResultRowConverter())
+                        .setContinuousBoundingSettings(
+                                new BoundednessSettingsBuilder()
+                                        .setBoundedness(Boundedness.BOUNDED)
+                                        .build())
+                        .build();
+
+        env.fromSource(kuduSource, WatermarkStrategy.noWatermarks(), "KuduSource")
+                .returns(TypeInformation.of(Row.class))
+                .addSink(new TestingSinkFunction());
+
+        env.execute();
+        assertThat(collectedRecords.size()).isEqualTo(10);
     }
 
     private static void sleep(long millis) {

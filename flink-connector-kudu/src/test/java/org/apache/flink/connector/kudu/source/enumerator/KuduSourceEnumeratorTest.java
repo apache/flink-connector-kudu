@@ -21,13 +21,14 @@ import org.apache.flink.api.connector.source.Boundedness;
 import org.apache.flink.api.connector.source.SplitEnumeratorContext;
 import org.apache.flink.connector.kudu.connector.KuduTableInfo;
 import org.apache.flink.connector.kudu.connector.reader.KuduReaderConfig;
-import org.apache.flink.connector.kudu.source.config.ContinuousBoundingSettings;
-import org.apache.flink.connector.kudu.source.config.ContinuousBoundingSettingsBuilder;
+import org.apache.flink.connector.kudu.source.config.BoundednessSettings;
+import org.apache.flink.connector.kudu.source.config.BoundednessSettingsBuilder;
 import org.apache.flink.connector.kudu.source.split.KuduSourceSplit;
 import org.apache.flink.connector.testutils.source.reader.TestingSplitEnumeratorContext;
 
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 
 import java.time.Duration;
 import java.util.ArrayList;
@@ -50,27 +51,23 @@ public class KuduSourceEnumeratorTest {
     private TestingSplitEnumeratorContext<KuduSourceSplit> context;
     private KuduSourceSplit split;
     private KuduSourceEnumerator enumerator;
-
     private final int subtaskId = 1;
     private final long checkpointId = 1L;
     private final String requesterHostname = "host";
 
     @BeforeEach
-    public void setup() {
+    void setup() {
         this.context = new TestingSplitEnumeratorContext<>(1);
-        this.enumerator = createEnumerator(context);
     }
 
-    // Create an enumerator with the following state:
-    // Number of unassigned splits: 1,
-    // Number of pending splits: 0.
-    private KuduSourceEnumerator createEnumerator(SplitEnumeratorContext<KuduSourceSplit> context) {
+    private KuduSourceEnumerator createEnumerator(
+            SplitEnumeratorContext<KuduSourceSplit> context, Boundedness boundedness) {
         KuduTableInfo tableInfo = KuduTableInfo.forTable("table");
         KuduReaderConfig readerConfig = KuduReaderConfig.Builder.setMasters("master").build();
-        ContinuousBoundingSettings continuousBoundingSettings =
-                new ContinuousBoundingSettingsBuilder()
-                        .setBoundedness(Boundedness.BOUNDED)
-                        .setPeriod(Duration.ofSeconds(1))
+        BoundednessSettings boundednessSettings =
+                new BoundednessSettingsBuilder()
+                        .setDiscoveryInterval(Duration.ofSeconds(1))
+                        .setBoundedness(boundedness)
                         .build();
 
         byte[] token = {1, 2, 3, 4, 5};
@@ -83,18 +80,22 @@ public class KuduSourceEnumeratorTest {
         KuduSourceEnumeratorState state = new KuduSourceEnumeratorState(1L, unassigned, pending);
 
         return new KuduSourceEnumerator(
-                tableInfo, readerConfig, continuousBoundingSettings, context, state);
+                tableInfo, readerConfig, boundednessSettings, context, state);
     }
 
-    @Test
-    void testCheckpointNoSplitRequested() throws Exception {
+    @ParameterizedTest
+    @EnumSource(Boundedness.class)
+    void testCheckpointNoSplitRequested(Boundedness boundedness) throws Exception {
+        enumerator = createEnumerator(context, boundedness);
         KuduSourceEnumeratorState state = enumerator.snapshotState(checkpointId);
         assertThat(state.getUnassigned().size()).isEqualTo(1);
         assertThat(state.getPending().size()).isEqualTo(0);
     }
 
-    @Test
-    void testSplitRequestForRegisteredReader() throws Exception {
+    @ParameterizedTest
+    @EnumSource(Boundedness.class)
+    void testSplitRequestForRegisteredReader(Boundedness boundedness) throws Exception {
+        enumerator = createEnumerator(context, boundedness);
         context.registerReader(subtaskId, requesterHostname);
         enumerator.addReader(subtaskId);
         enumerator.handleSplitRequest(subtaskId, requesterHostname);
@@ -105,8 +106,10 @@ public class KuduSourceEnumeratorTest {
                 .contains(split);
     }
 
-    @Test
-    void testSplitRequestForNonRegisteredReader() throws Exception {
+    @ParameterizedTest
+    @EnumSource(Boundedness.class)
+    void testSplitRequestForNonRegisteredReader(Boundedness boundedness) throws Exception {
+        enumerator = createEnumerator(context, boundedness);
         enumerator.handleSplitRequest(subtaskId, requesterHostname);
         assertThat(context.getSplitAssignments().size()).isEqualTo(0);
         assertThat(enumerator.snapshotState(checkpointId).getUnassigned().size()).isEqualTo(1);

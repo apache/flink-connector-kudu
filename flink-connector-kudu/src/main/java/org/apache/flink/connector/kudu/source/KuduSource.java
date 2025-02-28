@@ -28,7 +28,7 @@ import org.apache.flink.configuration.Configuration;
 import org.apache.flink.connector.kudu.connector.KuduTableInfo;
 import org.apache.flink.connector.kudu.connector.converter.RowResultConverter;
 import org.apache.flink.connector.kudu.connector.reader.KuduReaderConfig;
-import org.apache.flink.connector.kudu.source.config.ContinuousBoundingSettings;
+import org.apache.flink.connector.kudu.source.config.BoundednessSettings;
 import org.apache.flink.connector.kudu.source.enumerator.KuduSourceEnumerator;
 import org.apache.flink.connector.kudu.source.enumerator.KuduSourceEnumeratorState;
 import org.apache.flink.connector.kudu.source.enumerator.KuduSourceEnumeratorStateSerializer;
@@ -39,8 +39,18 @@ import org.apache.flink.connector.kudu.source.split.KuduSourceSplitSerializer;
 import org.apache.flink.core.io.SimpleVersionedSerializer;
 
 /**
- * A continuous, unbounded Flink {@link Source} for reading data from Apache Kudu. It uses
- * differential scanning to achieve a CDC-like behavior, continuously capturing changes.
+ * A Flink {@link Source} for reading data from Apache Kudu. It supports both bounded and continuous
+ * unbounded modes, allowing it to function as a snapshot reader or as a CDC-like source that
+ * captures ongoing changes.
+ *
+ * <p>The behavior depends on the {@link BoundednessSettings}:
+ *
+ * <ul>
+ *   <li>If {@code Boundedness.BOUNDED} is set, the source reads a snapshot of the table at a given
+ *       point in time and emits only records from this fixed dataset.
+ *   <li>If {@code Boundedness.CONTINUOUS_UNBOUNDED} is set, the source performs differential scans
+ *       at configured intervals to continuously capture changes.
+ * </ul>
  *
  * <p>Key components:
  *
@@ -48,8 +58,8 @@ import org.apache.flink.core.io.SimpleVersionedSerializer;
  *   <li>{@link KuduReaderConfig} - Configures the Kudu connection, including master addresses.
  *   <li>{@link KuduTableInfo} - Specifies the target Kudu table, including its name and schema
  *       details.
- *   <li>{@link ContinuousBoundingSettings} - Defines the boundedness and polling interval, i.e.,
- *       the time between consecutive scans.
+ *   <li>{@link BoundednessSettings} - Defines the boundedness and polling interval, i.e., the time
+ *       between consecutive scans.
  *   <li>{@link RowResultConverter} - Converts Kudu's {@code RowResult} into the desired output type
  *       {@code OUT}.
  * </ul>
@@ -60,7 +70,7 @@ import org.apache.flink.core.io.SimpleVersionedSerializer;
 public class KuduSource<OUT> implements Source<OUT, KuduSourceSplit, KuduSourceEnumeratorState> {
     private final KuduReaderConfig readerConfig;
     private final KuduTableInfo tableInfo;
-    private final ContinuousBoundingSettings continuousBoundingSettings;
+    private final BoundednessSettings boundednessSettings;
     private final RowResultConverter<OUT> rowResultConverter;
 
     private final Configuration configuration;
@@ -68,25 +78,24 @@ public class KuduSource<OUT> implements Source<OUT, KuduSourceSplit, KuduSourceE
     KuduSource(
             KuduReaderConfig readerConfig,
             KuduTableInfo tableInfo,
-            ContinuousBoundingSettings continuousBoundingSettings,
+            BoundednessSettings boundednessSettings,
             RowResultConverter<OUT> rowResultConverter) {
         this.tableInfo = tableInfo;
         this.readerConfig = readerConfig;
         this.rowResultConverter = rowResultConverter;
-        this.continuousBoundingSettings = continuousBoundingSettings;
+        this.boundednessSettings = boundednessSettings;
         this.configuration = new Configuration();
     }
 
     @Override
     public Boundedness getBoundedness() {
-        return continuousBoundingSettings.getBoundedness();
+        return boundednessSettings.getBoundedness();
     }
 
     @Override
     public SplitEnumerator<KuduSourceSplit, KuduSourceEnumeratorState> createEnumerator(
             SplitEnumeratorContext<KuduSourceSplit> enumContext) {
-        return new KuduSourceEnumerator(
-                tableInfo, readerConfig, continuousBoundingSettings, enumContext);
+        return new KuduSourceEnumerator(tableInfo, readerConfig, boundednessSettings, enumContext);
     }
 
     @Override
@@ -95,7 +104,7 @@ public class KuduSource<OUT> implements Source<OUT, KuduSourceSplit, KuduSourceE
             KuduSourceEnumeratorState checkpoint)
             throws Exception {
         return new KuduSourceEnumerator(
-                tableInfo, readerConfig, continuousBoundingSettings, enumContext, checkpoint);
+                tableInfo, readerConfig, boundednessSettings, enumContext, checkpoint);
     }
 
     @Override

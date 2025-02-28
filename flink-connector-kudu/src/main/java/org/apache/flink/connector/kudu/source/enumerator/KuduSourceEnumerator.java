@@ -23,7 +23,7 @@ import org.apache.flink.api.connector.source.SplitEnumerator;
 import org.apache.flink.api.connector.source.SplitEnumeratorContext;
 import org.apache.flink.connector.kudu.connector.KuduTableInfo;
 import org.apache.flink.connector.kudu.connector.reader.KuduReaderConfig;
-import org.apache.flink.connector.kudu.source.config.ContinuousBoundingSettings;
+import org.apache.flink.connector.kudu.source.config.BoundednessSettings;
 import org.apache.flink.connector.kudu.source.split.KuduSourceSplit;
 import org.apache.flink.connector.kudu.source.split.SplitFinishedEvent;
 
@@ -45,8 +45,16 @@ import java.util.function.Supplier;
 import static org.apache.flink.util.Preconditions.checkNotNull;
 
 /**
- * The Kudu source enumerator is responsible for periodically discovering and assigning new splits
- * when possible.
+ * The Kudu source enumerator is responsible for discovering and assigning splits.
+ *
+ * <p>The enumeration behavior depends on the {@link BoundednessSettings}:
+ *
+ * <ul>
+ *   <li>If {@code Boundedness.BOUNDED} is set, the enumerator generates splits corresponding to the
+ *       current snapshot time and emits records only for this bounded set.
+ *   <li>If {@code Boundedness.CONTINUOUS_UNBOUNDED} is set, the enumerator follows a CDC-like
+ *       approach as described below.
+ * </ul>
  *
  * <p>To provide CDC-like functionality, the enumeration works as follows: Initially, we perform a
  * snapshot read of the table and mark the snapshot time as t0. From that point onward, we perform
@@ -74,7 +82,7 @@ public class KuduSourceEnumerator
     private final SplitEnumeratorContext<KuduSourceSplit> context;
     private final List<Integer> readersAwaitingSplit;
     private final KuduSplitGenerator splitGenerator;
-    private final ContinuousBoundingSettings continuousBoundingSettings;
+    private final BoundednessSettings boundednessSettings;
 
     private long lastEndTimestamp;
     private final List<KuduSourceSplit> unassigned;
@@ -83,12 +91,12 @@ public class KuduSourceEnumerator
     public KuduSourceEnumerator(
             KuduTableInfo tableInfo,
             KuduReaderConfig readerConfig,
-            ContinuousBoundingSettings continuousBoundingSettings,
+            BoundednessSettings boundednessSettings,
             SplitEnumeratorContext<KuduSourceSplit> context) {
         this(
                 tableInfo,
                 readerConfig,
-                continuousBoundingSettings,
+                boundednessSettings,
                 context,
                 KuduSourceEnumeratorState.empty());
     }
@@ -96,10 +104,10 @@ public class KuduSourceEnumerator
     public KuduSourceEnumerator(
             KuduTableInfo tableInfo,
             KuduReaderConfig readerConfig,
-            ContinuousBoundingSettings continuousBoundingSettings,
+            BoundednessSettings boundednessSettings,
             SplitEnumeratorContext<KuduSourceSplit> context,
             KuduSourceEnumeratorState enumState) {
-        this.continuousBoundingSettings = continuousBoundingSettings;
+        this.boundednessSettings = boundednessSettings;
         this.context = checkNotNull(context);
         this.readersAwaitingSplit = new ArrayList<>();
         this.unassigned = enumState.getUnassigned();
@@ -110,36 +118,45 @@ public class KuduSourceEnumerator
 
     @Override
     public void start() {
-        if (continuousBoundingSettings.getBoundedness() == Boundedness.CONTINUOUS_UNBOUNDED
-                && Objects.nonNull(continuousBoundingSettings.getPeriod())) {
+        if (boundednessSettings.getBoundedness() == Boundedness.CONTINUOUS_UNBOUNDED
+                && Objects.nonNull(boundednessSettings.getDiscoveryInterval())) {
             context.callAsync(
-                    () -> enumerateNewSplits(() -> pending.isEmpty() && unassigned.isEmpty()),
+                    () -> enumerateNewSplits(() -> shouldEnumerateNewSplits()),
                     this::assignSplits,
                     0,
-                    continuousBoundingSettings.getPeriod().toMillis());
-        } else {
-            List<KuduSourceSplit> splits = enumerateNewSplits(() -> true);
+                    boundednessSettings.getDiscoveryInterval().toMillis());
+        } else if (boundednessSettings.getBoundedness().equals(Boundedness.BOUNDED)) {
+            List<KuduSourceSplit> splits = enumerateNewSplits(() -> shouldEnumerateNewSplits());
             if (splits != null) {
-                unassigned.addAll(enumerateNewSplits(() -> true));
-                assignSplitsToReaders();
+                unassigned.addAll(splits);
             }
         }
     }
 
     @Override
     public void handleSplitRequest(int subtaskId, @Nullable String requesterHostname) {
-        readersAwaitingSplit.add(subtaskId);
-        assignSplitsToReaders();
+        if (boundednessSettings.getBoundedness().equals(Boundedness.CONTINUOUS_UNBOUNDED)) {
+            readersAwaitingSplit.add(subtaskId);
+            assignSplitsToReadersUnbounded();
+        } else if (boundednessSettings.getBoundedness().equals(Boundedness.BOUNDED)) {
+            assignSplitsToReadersBounded(subtaskId);
+        }
     }
 
     @Override
     public void addSplitsBack(List<KuduSourceSplit> splits, int subtaskId) {
-        LOG.debug("File Source Enumerator adds splits back: {}", splits);
-        unassigned.addAll(splits);
-        if (context.registeredReaders().containsKey(subtaskId)) {
-            readersAwaitingSplit.add(subtaskId);
+        LOG.debug("Kudu Source Enumerator adds splits back: {}", splits);
+        if (boundednessSettings.getBoundedness().equals(Boundedness.CONTINUOUS_UNBOUNDED)) {
+            unassigned.addAll(splits);
+            if (context.registeredReaders().containsKey(subtaskId)) {
+                readersAwaitingSplit.add(subtaskId);
+            }
+            assignSplitsToReadersUnbounded();
+        } else if (boundednessSettings.getBoundedness().equals(Boundedness.BOUNDED)) {
+            context.registeredReaders()
+                    .keySet()
+                    .forEach(subTask -> assignSplitsToReadersBounded(subTask));
         }
-        assignSplitsToReaders();
     }
 
     @Override
@@ -171,6 +188,11 @@ public class KuduSourceEnumerator
                     splitFinishedEvent.getFinishedSplits());
             pending.removeAll(splitFinishedEvent.getFinishedSplits());
             readersAwaitingSplit.add(subtaskId);
+            if (boundednessSettings.getBoundedness().equals(Boundedness.CONTINUOUS_UNBOUNDED)) {
+                assignSplitsToReadersUnbounded();
+            } else if (boundednessSettings.getBoundedness().equals(Boundedness.BOUNDED)) {
+                assignSplitsToReadersBounded(subtaskId);
+            }
         }
     }
 
@@ -207,10 +229,10 @@ public class KuduSourceEnumerator
         if (splits != null) {
             unassigned.addAll(splits);
         }
-        assignSplitsToReaders();
+        assignSplitsToReadersUnbounded();
     }
 
-    private void assignSplitsToReaders() {
+    private void assignSplitsToReadersUnbounded() {
         final Iterator<Integer> awaitingSubtasks = readersAwaitingSplit.iterator();
 
         while (awaitingSubtasks.hasNext()) {
@@ -234,6 +256,20 @@ public class KuduSourceEnumerator
         }
     }
 
+    private void assignSplitsToReadersBounded(int subtaskId) {
+        if (!context.registeredReaders().containsKey(subtaskId)) {
+            return;
+        }
+
+        final Optional<KuduSourceSplit> nextSplit = getNextSplit();
+        if (nextSplit.isPresent()) {
+            context.assignSplit(nextSplit.get(), subtaskId);
+            pending.add(nextSplit.get());
+        } else {
+            context.signalNoMoreSplits(subtaskId);
+        }
+    }
+
     private Optional<KuduSourceSplit> getNextSplit() {
         if (unassigned.isEmpty()) {
             return Optional.empty();
@@ -246,8 +282,12 @@ public class KuduSourceEnumerator
 
     // Helper method to get the current Hybrid Time
     private long getCurrentHybridTime() {
-        return HybridTimeUtil.clockTimestampToHTTimestamp(
-                System.currentTimeMillis(), TimeUnit.MILLISECONDS);
+        long fromMicros = TimeUnit.MILLISECONDS.toMicros(System.currentTimeMillis());
+        return HybridTimeUtil.physicalAndLogicalToHTTimestamp(fromMicros, 0) + 1;
+    }
+
+    private Boolean shouldEnumerateNewSplits() {
+        return pending.isEmpty() && unassigned.isEmpty();
     }
 
     private Boolean isFirstSplitGeneration() {
