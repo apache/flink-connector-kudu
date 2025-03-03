@@ -17,52 +17,24 @@
 
 package org.apache.flink.connector.kudu.source;
 
-import org.apache.flink.api.common.JobID;
-import org.apache.flink.api.common.eventtime.WatermarkStrategy;
-import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.api.connector.source.Boundedness;
-import org.apache.flink.client.program.ClusterClient;
+import org.apache.flink.connector.kudu.connector.KuduTableInfo;
 import org.apache.flink.connector.kudu.connector.converter.RowResultRowConverter;
-import org.apache.flink.connector.kudu.source.config.BoundednessSettingsBuilder;
-import org.apache.flink.connector.kudu.testutils.KuduSourceITBase;
-import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
-import org.apache.flink.streaming.api.functions.sink.SinkFunction;
-import org.apache.flink.test.junit5.InjectClusterClient;
+import org.apache.flink.connector.kudu.connector.reader.KuduReaderConfig;
 import org.apache.flink.types.Row;
 
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import java.time.Duration;
-import java.util.Queue;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ConcurrentLinkedDeque;
-import java.util.function.Supplier;
-
-import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
 
 /** Tests for {@link KuduSource}. */
-public class KuduSourceTest extends KuduSourceTestBase implements KuduSourceITBase {
-    private static Queue<Row> collectedRecords;
-
-    @BeforeEach
-    public void init() {
-        super.init();
-        collectedRecords = new ConcurrentLinkedDeque<>();
-    }
-
+public class KuduSourceTest {
     @Test
     void testNonExistentReaderConfig() {
         KuduSourceBuilder<Row> builder =
                 new KuduSourceBuilder<Row>()
-                        .setTableInfo(getTableInfo())
-                        .setRowResultConverter(new RowResultRowConverter())
-                        .setContinuousBoundingSettings(
-                                new BoundednessSettingsBuilder()
-                                        .setBoundedness(Boundedness.BOUNDED)
-                                        .setDiscoveryInterval(Duration.ofSeconds(1))
-                                        .build());
+                        .setTableInfo(KuduTableInfo.forTable("table"))
+                        .setRowResultConverter(new RowResultRowConverter());
 
         assertThatThrownBy(builder::build)
                 .isInstanceOf(NullPointerException.class)
@@ -73,13 +45,8 @@ public class KuduSourceTest extends KuduSourceTestBase implements KuduSourceITBa
     void testNonExistentTableInfo() {
         KuduSourceBuilder<Row> builder =
                 new KuduSourceBuilder<Row>()
-                        .setReaderConfig(getReaderConfig())
-                        .setRowResultConverter(new RowResultRowConverter())
-                        .setContinuousBoundingSettings(
-                                new BoundednessSettingsBuilder()
-                                        .setBoundedness(Boundedness.BOUNDED)
-                                        .setDiscoveryInterval(Duration.ofSeconds(1))
-                                        .build());
+                        .setReaderConfig(KuduReaderConfig.Builder.setMasters("masters").build())
+                        .setRowResultConverter(new RowResultRowConverter());
 
         assertThatThrownBy(builder::build)
                 .isInstanceOf(NullPointerException.class)
@@ -90,13 +57,8 @@ public class KuduSourceTest extends KuduSourceTestBase implements KuduSourceITBa
     void testNonExistentRowResultConverter() {
         KuduSourceBuilder<Row> builder =
                 new KuduSourceBuilder<Row>()
-                        .setReaderConfig(getReaderConfig())
-                        .setTableInfo(getTableInfo())
-                        .setContinuousBoundingSettings(
-                                new BoundednessSettingsBuilder()
-                                        .setBoundedness(Boundedness.BOUNDED)
-                                        .setDiscoveryInterval(Duration.ofSeconds(1))
-                                        .build());
+                        .setReaderConfig(KuduReaderConfig.Builder.setMasters("masters").build())
+                        .setTableInfo(KuduTableInfo.forTable("table"));
 
         assertThatThrownBy(builder::build)
                 .isInstanceOf(NullPointerException.class)
@@ -104,101 +66,16 @@ public class KuduSourceTest extends KuduSourceTestBase implements KuduSourceITBa
     }
 
     @Test
-    void testNonExistentContinuousBoundingSettings() {
+    void testNonExistentDiscoveryIntervalContinuousMode() {
         KuduSourceBuilder<Row> builder =
                 new KuduSourceBuilder<Row>()
-                        .setReaderConfig(getReaderConfig())
-                        .setTableInfo(getTableInfo())
+                        .setReaderConfig(KuduReaderConfig.Builder.setMasters("masters").build())
+                        .setTableInfo(KuduTableInfo.forTable("table"))
+                        .setBoundedness(Boundedness.CONTINUOUS_UNBOUNDED)
                         .setRowResultConverter(new RowResultRowConverter());
 
         assertThatThrownBy(builder::build)
                 .isInstanceOf(NullPointerException.class)
-                .hasMessageContaining("ContinuousBoundingSettings");
-    }
-
-    @Test
-    public void testRecordsFromSourceUnbounded(@InjectClusterClient ClusterClient<?> client)
-            throws Exception {
-        StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
-
-        KuduSource<Row> kuduSource =
-                new KuduSourceBuilder<Row>()
-                        .setReaderConfig(getReaderConfig())
-                        .setTableInfo(getTableInfo())
-                        .setRowResultConverter(new RowResultRowConverter())
-                        .setContinuousBoundingSettings(
-                                new BoundednessSettingsBuilder()
-                                        .setBoundedness(Boundedness.CONTINUOUS_UNBOUNDED)
-                                        .setDiscoveryInterval(Duration.ofSeconds(1))
-                                        .build())
-                        .build();
-
-        env.fromSource(kuduSource, WatermarkStrategy.noWatermarks(), "KuduSource")
-                .returns(TypeInformation.of(Row.class))
-                .addSink(new TestingSinkFunction());
-
-        JobID jobID = env.executeAsync().getJobID();
-        waitExpectation(() -> collectedRecords.size() == 10);
-        assertThat(collectedRecords.size()).isEqualTo(10);
-        insertRows(10);
-        waitExpectation(() -> collectedRecords.size() == 20);
-        assertThat(collectedRecords.size()).isEqualTo(20);
-        client.cancel(jobID);
-    }
-
-    @Test
-    public void testRecordsFromSourceBounded(@InjectClusterClient ClusterClient<?> client)
-            throws Exception {
-        StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
-        env.setParallelism(1);
-
-        KuduSource<Row> kuduSource =
-                new KuduSourceBuilder<Row>()
-                        .setReaderConfig(getReaderConfig())
-                        .setTableInfo(getTableInfo())
-                        .setRowResultConverter(new RowResultRowConverter())
-                        .setContinuousBoundingSettings(
-                                new BoundednessSettingsBuilder()
-                                        .setBoundedness(Boundedness.BOUNDED)
-                                        .build())
-                        .build();
-
-        env.fromSource(kuduSource, WatermarkStrategy.noWatermarks(), "KuduSource")
-                .returns(TypeInformation.of(Row.class))
-                .addSink(new TestingSinkFunction());
-
-        env.execute();
-        assertThat(collectedRecords.size()).isEqualTo(10);
-    }
-
-    private static void sleep(long millis) {
-        try {
-            Thread.sleep(millis);
-        } catch (InterruptedException e) {
-            throw new RuntimeException(e);
-        }
-    }
-
-    private static void waitExpectation(Supplier<Boolean> condition) throws Exception {
-        CompletableFuture<Void> future =
-                CompletableFuture.runAsync(
-                        () -> {
-                            while (true) {
-                                if (condition.get()) {
-                                    break;
-                                }
-                                sleep(50);
-                            }
-                        });
-        future.get();
-    }
-
-    /** A sink function to collect the records. */
-    static class TestingSinkFunction implements SinkFunction<Row> {
-
-        @Override
-        public void invoke(Row value, Context context) throws Exception {
-            collectedRecords.add(value);
-        }
+                .hasMessageContaining("Discovery interval");
     }
 }

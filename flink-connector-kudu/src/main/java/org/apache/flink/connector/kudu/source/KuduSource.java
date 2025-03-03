@@ -28,7 +28,6 @@ import org.apache.flink.configuration.Configuration;
 import org.apache.flink.connector.kudu.connector.KuduTableInfo;
 import org.apache.flink.connector.kudu.connector.converter.RowResultConverter;
 import org.apache.flink.connector.kudu.connector.reader.KuduReaderConfig;
-import org.apache.flink.connector.kudu.source.config.BoundednessSettings;
 import org.apache.flink.connector.kudu.source.enumerator.KuduSourceEnumerator;
 import org.apache.flink.connector.kudu.source.enumerator.KuduSourceEnumeratorState;
 import org.apache.flink.connector.kudu.source.enumerator.KuduSourceEnumeratorStateSerializer;
@@ -38,12 +37,12 @@ import org.apache.flink.connector.kudu.source.split.KuduSourceSplit;
 import org.apache.flink.connector.kudu.source.split.KuduSourceSplitSerializer;
 import org.apache.flink.core.io.SimpleVersionedSerializer;
 
+import java.time.Duration;
+
 /**
  * A Flink {@link Source} for reading data from Apache Kudu. It supports both bounded and continuous
  * unbounded modes, allowing it to function as a snapshot reader or as a CDC-like source that
  * captures ongoing changes.
- *
- * <p>The behavior depends on the {@link BoundednessSettings}:
  *
  * <ul>
  *   <li>If {@code Boundedness.BOUNDED} is set, the source reads a snapshot of the table at a given
@@ -58,8 +57,8 @@ import org.apache.flink.core.io.SimpleVersionedSerializer;
  *   <li>{@link KuduReaderConfig} - Configures the Kudu connection, including master addresses.
  *   <li>{@link KuduTableInfo} - Specifies the target Kudu table, including its name and schema
  *       details.
- *   <li>{@link BoundednessSettings} - Defines the boundedness and polling interval, i.e., the time
- *       between consecutive scans.
+ *   <li>{@link Boundedness} - Specifies whether the source behaves in bounded or unbounded mode.
+ *   <li>{@link Duration} - Defines the polling interval, i.e. the time between consecutive scans.
  *   <li>{@link RowResultConverter} - Converts Kudu's {@code RowResult} into the desired output type
  *       {@code OUT}.
  * </ul>
@@ -70,7 +69,8 @@ import org.apache.flink.core.io.SimpleVersionedSerializer;
 public class KuduSource<OUT> implements Source<OUT, KuduSourceSplit, KuduSourceEnumeratorState> {
     private final KuduReaderConfig readerConfig;
     private final KuduTableInfo tableInfo;
-    private final BoundednessSettings boundednessSettings;
+    private final Boundedness boundedness;
+    private final Duration discoveryInterval;
     private final RowResultConverter<OUT> rowResultConverter;
 
     private final Configuration configuration;
@@ -78,24 +78,27 @@ public class KuduSource<OUT> implements Source<OUT, KuduSourceSplit, KuduSourceE
     KuduSource(
             KuduReaderConfig readerConfig,
             KuduTableInfo tableInfo,
-            BoundednessSettings boundednessSettings,
+            Boundedness boundedness,
+            Duration discoveryInterval,
             RowResultConverter<OUT> rowResultConverter) {
         this.tableInfo = tableInfo;
         this.readerConfig = readerConfig;
+        this.boundedness = boundedness;
+        this.discoveryInterval = discoveryInterval;
         this.rowResultConverter = rowResultConverter;
-        this.boundednessSettings = boundednessSettings;
         this.configuration = new Configuration();
     }
 
     @Override
     public Boundedness getBoundedness() {
-        return boundednessSettings.getBoundedness();
+        return boundedness;
     }
 
     @Override
     public SplitEnumerator<KuduSourceSplit, KuduSourceEnumeratorState> createEnumerator(
             SplitEnumeratorContext<KuduSourceSplit> enumContext) {
-        return new KuduSourceEnumerator(tableInfo, readerConfig, boundednessSettings, enumContext);
+        return new KuduSourceEnumerator(
+                tableInfo, readerConfig, boundedness, discoveryInterval, enumContext);
     }
 
     @Override
@@ -104,7 +107,7 @@ public class KuduSource<OUT> implements Source<OUT, KuduSourceSplit, KuduSourceE
             KuduSourceEnumeratorState checkpoint)
             throws Exception {
         return new KuduSourceEnumerator(
-                tableInfo, readerConfig, boundednessSettings, enumContext, checkpoint);
+                tableInfo, readerConfig, boundedness, discoveryInterval, enumContext, checkpoint);
     }
 
     @Override
@@ -121,7 +124,7 @@ public class KuduSource<OUT> implements Source<OUT, KuduSourceSplit, KuduSourceE
     @Override
     public SourceReader<OUT, KuduSourceSplit> createReader(SourceReaderContext readerContext)
             throws Exception {
-        return new KuduSourceReader(
+        return new KuduSourceReader<>(
                 () -> new KuduSourceSplitReader(readerConfig),
                 configuration,
                 readerContext,

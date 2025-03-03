@@ -33,7 +33,6 @@ import org.apache.kudu.client.KuduTable;
 import org.apache.kudu.client.PartialRow;
 import org.apache.kudu.client.SessionConfiguration;
 import org.apache.kudu.util.HybridTimeUtil;
-import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 
@@ -49,26 +48,18 @@ public class KuduSourceTestBase extends KuduTestBase {
     public static int lastInsertedKey = 0;
 
     @BeforeEach
-    public void init() {
+    public void init() throws Exception {
         readerConfig = KuduReaderConfig.Builder.setMasters(getMasterAddress()).build();
         tableInfo = KuduTableInfo.forTable(getTableName());
 
-        try {
-            createExampleTable();
-            insertRows(10);
-        } catch (Exception e) {
-            Assertions.fail(e.getMessage());
-        }
+        createExampleTable();
+        insertRows(10);
     }
 
     @AfterEach
-    void tearDown() {
-        try {
-            deleteTable();
-            lastInsertedKey = 0;
-        } catch (Exception e) {
-            Assertions.fail(e.getMessage());
-        }
+    public void tearDown() throws Exception {
+        deleteTable();
+        lastInsertedKey = 0;
     }
 
     public static KuduReaderConfig getReaderConfig() {

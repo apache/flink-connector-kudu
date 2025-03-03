@@ -15,22 +15,26 @@
  * limitations under the License.
  */
 
-package org.apache.flink.connector.kudu.testutils;
+package org.apache.flink.connector.kudu.source.utils;
 
-import org.apache.flink.runtime.testutils.MiniClusterResourceConfiguration;
-import org.apache.flink.test.junit5.MiniClusterExtension;
+import org.apache.flink.connector.kudu.source.split.KuduSourceSplit;
 
-import org.junit.jupiter.api.extension.RegisterExtension;
+import java.util.Collection;
+import java.util.Iterator;
 
-/**
- * Need this in order for '@InjectClusterClient ClusterClient<?> client' to work as test argument.
- */
-public interface KuduSourceITBase {
-    @RegisterExtension
-    MiniClusterExtension MINI_CLUSTER =
-            new MiniClusterExtension(
-                    new MiniClusterResourceConfiguration.Builder()
-                            .setNumberTaskManagers(2)
-                            .setNumberSlotsPerTaskManager(2)
-                            .build());
+/** Utility class for retrieving the next available Kudu source split. */
+public class KuduSplitRetriever {
+
+    private KuduSplitRetriever() {}
+
+    /** Retrieves and removes the next available split from the given collection. */
+    public static KuduSourceSplit getNextSplit(Collection<KuduSourceSplit> splits) {
+        if (splits == null || splits.isEmpty()) {
+            return null;
+        }
+        Iterator<KuduSourceSplit> iterator = splits.iterator();
+        KuduSourceSplit next = iterator.next();
+        iterator.remove();
+        return next;
+    }
 }

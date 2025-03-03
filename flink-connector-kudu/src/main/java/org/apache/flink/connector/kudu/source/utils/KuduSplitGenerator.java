@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package org.apache.flink.connector.kudu.source.enumerator;
+package org.apache.flink.connector.kudu.source.utils;
 
 import org.apache.flink.connector.kudu.connector.KuduTableInfo;
 import org.apache.flink.connector.kudu.connector.reader.KuduReaderConfig;
@@ -33,7 +33,7 @@ import java.util.List;
  * The class responsible for producing scan tokens for given timestamps and returning them in the
  * form of {@link KuduSourceSplit}.
  */
-public class KuduSplitGenerator {
+public class KuduSplitGenerator implements AutoCloseable {
     private final KuduTableInfo tableInfo;
     private final KuduClient kuduClient;
 

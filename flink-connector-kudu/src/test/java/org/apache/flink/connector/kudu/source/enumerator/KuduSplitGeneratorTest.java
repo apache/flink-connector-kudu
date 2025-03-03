@@ -21,6 +21,7 @@ import org.apache.flink.connector.kudu.connector.KuduTableInfo;
 import org.apache.flink.connector.kudu.connector.reader.KuduReaderConfig;
 import org.apache.flink.connector.kudu.source.KuduSourceTestBase;
 import org.apache.flink.connector.kudu.source.split.KuduSourceSplit;
+import org.apache.flink.connector.kudu.source.utils.KuduSplitGenerator;
 
 import org.apache.kudu.client.KuduScanToken;
 import org.apache.kudu.client.KuduScanner;
@@ -48,35 +49,43 @@ public class KuduSplitGeneratorTest extends KuduSourceTestBase {
 
     @Test
     public void testGenerateGoodFullScanSplits() {
-        KuduSplitGenerator generator = new KuduSplitGenerator(getReaderConfig(), getTableInfo());
-        List<KuduSourceSplit> splits = generator.generateFullScanSplits(currentHT);
-        assertThat(splits.size()).isGreaterThan(0);
-        // Check that all the splits can be properly deserialized into Kudu scanners.
-        for (KuduSourceSplit split : splits) {
-            try {
-                KuduScanner scanner =
-                        KuduScanToken.deserializeIntoScanner(
-                                split.getSerializedScanToken(), getClient());
-            } catch (Exception e) {
-                Assertions.fail("Deserialization failed: " + e.getMessage());
+        try (KuduSplitGenerator generator =
+                new KuduSplitGenerator(getReaderConfig(), getTableInfo())) {
+            List<KuduSourceSplit> splits = generator.generateFullScanSplits(currentHT);
+            assertThat(splits.size()).isGreaterThan(0);
+            // Check that all the splits can be properly deserialized into Kudu scanners.
+            for (KuduSourceSplit split : splits) {
+                try {
+                    KuduScanner scanner =
+                            KuduScanToken.deserializeIntoScanner(
+                                    split.getSerializedScanToken(), getClient());
+                } catch (Exception e) {
+                    Assertions.fail("Deserialization failed: " + e.getMessage());
+                }
             }
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to close KuduSplitGenerator", e);
         }
     }
 
     @Test
-    public void testGenerateGoodIncrementalSplits() throws Exception {
-        KuduSplitGenerator generator = new KuduSplitGenerator(getReaderConfig(), getTableInfo());
-        List<KuduSourceSplit> splits = generator.generateIncrementalSplits(startHT, endHT);
-        assertThat(splits.size()).isGreaterThan(0);
-        // Check that all the splits can be properly deserialized into Kudu scanners.
-        for (KuduSourceSplit split : splits) {
-            try {
-                KuduScanner scanner =
-                        KuduScanToken.deserializeIntoScanner(
-                                split.getSerializedScanToken(), getClient());
-            } catch (Exception e) {
-                Assertions.fail("Deserialization failed: " + e.getMessage());
+    public void testGenerateGoodIncrementalSplits() {
+        try (KuduSplitGenerator generator =
+                new KuduSplitGenerator(getReaderConfig(), getTableInfo())) {
+            List<KuduSourceSplit> splits = generator.generateIncrementalSplits(startHT, endHT);
+            assertThat(splits.size()).isGreaterThan(0);
+            // Check that all the splits can be properly deserialized into Kudu scanners.
+            for (KuduSourceSplit split : splits) {
+                try {
+                    KuduScanner scanner =
+                            KuduScanToken.deserializeIntoScanner(
+                                    split.getSerializedScanToken(), getClient());
+                } catch (Exception e) {
+                    Assertions.fail("Deserialization failed: " + e.getMessage());
+                }
             }
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to close KuduSplitGenerator", e);
         }
     }
 
@@ -84,44 +93,61 @@ public class KuduSplitGeneratorTest extends KuduSourceTestBase {
     public void testInvalidReaderConfigFullScan() {
         KuduReaderConfig invalidReaderConfig =
                 KuduReaderConfig.Builder.setMasters("invalidMasters").build();
-        KuduSplitGenerator generator = new KuduSplitGenerator(invalidReaderConfig, getTableInfo());
+        try (KuduSplitGenerator generator =
+                new KuduSplitGenerator(invalidReaderConfig, getTableInfo())) {
 
-        assertThatThrownBy(() -> generator.generateFullScanSplits(currentHT))
-                .isInstanceOf(RuntimeException.class)
-                .hasMessageContaining(
-                        "Error during full snapshot scan: Couldn't find a valid master");
+            assertThatThrownBy(() -> generator.generateFullScanSplits(currentHT))
+                    .isInstanceOf(RuntimeException.class)
+                    .hasMessageContaining(
+                            "Error during full snapshot scan: Couldn't find a valid master");
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to close KuduSplitGenerator", e);
+        }
     }
 
     @Test
     public void testInvalidTableInfoFullScan() {
         KuduTableInfo invalidTableInfo = KuduTableInfo.forTable("nonExistentTable");
-        KuduSplitGenerator generator = new KuduSplitGenerator(getReaderConfig(), invalidTableInfo);
+        try (KuduSplitGenerator generator =
+                new KuduSplitGenerator(getReaderConfig(), invalidTableInfo)) {
 
-        assertThatThrownBy(() -> generator.generateFullScanSplits(currentHT))
-                .isInstanceOf(RuntimeException.class)
-                .hasMessageContaining("Error during full snapshot scan: the table does not exist");
+            assertThatThrownBy(() -> generator.generateFullScanSplits(currentHT))
+                    .isInstanceOf(RuntimeException.class)
+                    .hasMessageContaining(
+                            "Error during full snapshot scan: the table does not exist");
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to close KuduSplitGenerator", e);
+        }
     }
 
     @Test
-    public void testInvalidReaderConfigIncrementalScan() throws Exception {
+    public void testInvalidReaderConfigIncrementalScan() {
         KuduReaderConfig invalidReaderConfig =
                 KuduReaderConfig.Builder.setMasters("invalidMasters").build();
-        KuduSplitGenerator generator = new KuduSplitGenerator(invalidReaderConfig, getTableInfo());
+        try (KuduSplitGenerator generator =
+                new KuduSplitGenerator(invalidReaderConfig, getTableInfo())) {
 
-        assertThatThrownBy(() -> generator.generateIncrementalSplits(startHT, endHT))
-                .isInstanceOf(RuntimeException.class)
-                .hasMessageContaining(
-                        "Error during incremental diff scan: Couldn't find a valid master");
+            assertThatThrownBy(() -> generator.generateIncrementalSplits(startHT, endHT))
+                    .isInstanceOf(RuntimeException.class)
+                    .hasMessageContaining(
+                            "Error during incremental diff scan: Couldn't find a valid master");
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to close KuduSplitGenerator", e);
+        }
     }
 
     @Test
-    public void testInvalidTableInfoIncrementalScan() throws Exception {
+    public void testInvalidTableInfoIncrementalScan() {
         KuduTableInfo invalidTableInfo = KuduTableInfo.forTable("nonExistentTable");
-        KuduSplitGenerator generator = new KuduSplitGenerator(getReaderConfig(), invalidTableInfo);
+        try (KuduSplitGenerator generator =
+                new KuduSplitGenerator(getReaderConfig(), invalidTableInfo)) {
 
-        assertThatThrownBy(() -> generator.generateIncrementalSplits(startHT, endHT))
-                .isInstanceOf(RuntimeException.class)
-                .hasMessageContaining(
-                        "Error during incremental diff scan: the table does not exist");
+            assertThatThrownBy(() -> generator.generateIncrementalSplits(startHT, endHT))
+                    .isInstanceOf(RuntimeException.class)
+                    .hasMessageContaining(
+                            "Error during incremental diff scan: the table does not exist");
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to close KuduSplitGenerator", e);
+        }
     }
 }

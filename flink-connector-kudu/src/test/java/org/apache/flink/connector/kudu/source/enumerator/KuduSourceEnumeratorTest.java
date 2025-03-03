@@ -21,8 +21,6 @@ import org.apache.flink.api.connector.source.Boundedness;
 import org.apache.flink.api.connector.source.SplitEnumeratorContext;
 import org.apache.flink.connector.kudu.connector.KuduTableInfo;
 import org.apache.flink.connector.kudu.connector.reader.KuduReaderConfig;
-import org.apache.flink.connector.kudu.source.config.BoundednessSettings;
-import org.apache.flink.connector.kudu.source.config.BoundednessSettingsBuilder;
 import org.apache.flink.connector.kudu.source.split.KuduSourceSplit;
 import org.apache.flink.connector.testutils.source.reader.TestingSplitEnumeratorContext;
 
@@ -30,7 +28,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 
-import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -64,11 +61,6 @@ public class KuduSourceEnumeratorTest {
             SplitEnumeratorContext<KuduSourceSplit> context, Boundedness boundedness) {
         KuduTableInfo tableInfo = KuduTableInfo.forTable("table");
         KuduReaderConfig readerConfig = KuduReaderConfig.Builder.setMasters("master").build();
-        BoundednessSettings boundednessSettings =
-                new BoundednessSettingsBuilder()
-                        .setDiscoveryInterval(Duration.ofSeconds(1))
-                        .setBoundedness(boundedness)
-                        .build();
 
         byte[] token = {1, 2, 3, 4, 5};
         split = new KuduSourceSplit(token);
@@ -79,8 +71,7 @@ public class KuduSourceEnumeratorTest {
 
         KuduSourceEnumeratorState state = new KuduSourceEnumeratorState(1L, unassigned, pending);
 
-        return new KuduSourceEnumerator(
-                tableInfo, readerConfig, boundednessSettings, context, state);
+        return new KuduSourceEnumerator(tableInfo, readerConfig, boundedness, null, context, state);
     }
 
     @ParameterizedTest

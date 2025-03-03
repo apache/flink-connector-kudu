@@ -23,6 +23,7 @@ import org.apache.flink.connector.base.source.reader.splitreader.SplitReader;
 import org.apache.flink.connector.base.source.reader.splitreader.SplitsChange;
 import org.apache.flink.connector.kudu.connector.reader.KuduReaderConfig;
 import org.apache.flink.connector.kudu.source.split.KuduSourceSplit;
+import org.apache.flink.connector.kudu.source.utils.KuduSplitRetriever;
 
 import org.apache.kudu.client.KuduClient;
 import org.apache.kudu.client.KuduScanToken;
@@ -33,9 +34,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.List;
-import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /** The Kudu source reader that reads data for corresponding splits. */
@@ -55,12 +54,11 @@ public class KuduSourceSplitReader implements SplitReader<RowResult, KuduSourceS
     public RecordsWithSplitIds<RowResult> fetch() throws IOException {
         wakeUpFlag.compareAndSet(true, false);
 
-        final Optional<KuduSourceSplit> currentSplitOpt = getNextSplit();
-        if (!currentSplitOpt.isPresent()) {
+        final KuduSourceSplit currentSplit = KuduSplitRetriever.getNextSplit(splits);
+        if (currentSplit == null) {
             return new RecordsBySplits.Builder<RowResult>().build();
         }
 
-        KuduSourceSplit currentSplit = currentSplitOpt.get();
         byte[] serializedToken = currentSplit.getSerializedScanToken();
         KuduScanner scanner = KuduScanToken.deserializeIntoScanner(serializedToken, kuduClient);
         RecordsBySplits.Builder<RowResult> builder = new RecordsBySplits.Builder<>();
@@ -103,15 +101,5 @@ public class KuduSourceSplitReader implements SplitReader<RowResult, KuduSourceS
     @Override
     public void close() throws Exception {
         kuduClient.close();
-    }
-
-    private Optional<KuduSourceSplit> getNextSplit() {
-        if (splits.isEmpty()) {
-            return Optional.empty();
-        }
-        Iterator<KuduSourceSplit> iterator = splits.iterator();
-        KuduSourceSplit next = iterator.next();
-        iterator.remove();
-        return Optional.of(next);
     }
 }

@@ -25,6 +25,8 @@ import org.apache.flink.connector.kudu.connector.converter.RowResultConverter;
 import org.apache.flink.connector.kudu.source.split.KuduSourceSplit;
 import org.apache.flink.connector.kudu.source.split.SplitFinishedEvent;
 
+import org.apache.kudu.client.RowResult;
+
 import java.util.ArrayList;
 import java.util.Map;
 import java.util.function.Supplier;
@@ -35,13 +37,14 @@ import java.util.function.Supplier;
  * @param <OUT> the type of records read from the source.
  */
 public class KuduSourceReader<OUT>
-        extends SingleThreadMultiplexSourceReaderBase<OUT, OUT, KuduSourceSplit, KuduSourceSplit> {
+        extends SingleThreadMultiplexSourceReaderBase<
+                RowResult, OUT, KuduSourceSplit, KuduSourceSplit> {
 
     public KuduSourceReader(
-            Supplier<SplitReader<OUT, KuduSourceSplit>> splitReaderSupplier,
+            Supplier<SplitReader<RowResult, KuduSourceSplit>> splitReaderSupplier,
             Configuration config,
             SourceReaderContext context,
-            RowResultConverter rowResultConverter) {
+            RowResultConverter<OUT> rowResultConverter) {
         super(splitReaderSupplier, new KuduRecordEmitter<>(rowResultConverter), config, context);
     }
 

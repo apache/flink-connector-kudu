@@ -17,10 +17,12 @@
 
 package org.apache.flink.connector.kudu.source;
 
+import org.apache.flink.api.connector.source.Boundedness;
 import org.apache.flink.connector.kudu.connector.KuduTableInfo;
 import org.apache.flink.connector.kudu.connector.converter.RowResultConverter;
 import org.apache.flink.connector.kudu.connector.reader.KuduReaderConfig;
-import org.apache.flink.connector.kudu.source.config.BoundednessSettings;
+
+import java.time.Duration;
 
 import static org.apache.flink.util.Preconditions.checkNotNull;
 
@@ -32,8 +34,9 @@ import static org.apache.flink.util.Preconditions.checkNotNull;
 public class KuduSourceBuilder<OUT> {
     private KuduReaderConfig readerConfig;
     private KuduTableInfo tableInfo;
+    private Boundedness boundedness = Boundedness.BOUNDED;
+    private Duration discoveryInterval = null;
     private RowResultConverter<OUT> rowResultConverter;
-    private BoundednessSettings boundednessSettings;
 
     public KuduSourceBuilder<OUT> setTableInfo(KuduTableInfo tableInfo) {
         this.tableInfo = tableInfo;
@@ -51,9 +54,13 @@ public class KuduSourceBuilder<OUT> {
         return this;
     }
 
-    public KuduSourceBuilder<OUT> setContinuousBoundingSettings(
-            BoundednessSettings boundednessSettings) {
-        this.boundednessSettings = boundednessSettings;
+    public KuduSourceBuilder<OUT> setBoundedness(Boundedness boundedness) {
+        this.boundedness = boundedness;
+        return this;
+    }
+
+    public KuduSourceBuilder<OUT> setDiscoveryInterval(Duration discoveryInterval) {
+        this.discoveryInterval = discoveryInterval;
         return this;
     }
 
@@ -61,8 +68,13 @@ public class KuduSourceBuilder<OUT> {
         checkNotNull(tableInfo, "Table info must be provided.");
         checkNotNull(readerConfig, "Reader config must be provided.");
         checkNotNull(rowResultConverter, "RowResultConverter must be provided.");
-        checkNotNull(boundednessSettings, "ContinuousBoundingSettings must be provided.");
+        if (boundedness == Boundedness.CONTINUOUS_UNBOUNDED) {
+            checkNotNull(
+                    discoveryInterval,
+                    "Discovery interval must be provided for CONTINUOUS_UNBOUNDED mode.");
+        }
 
-        return new KuduSource<>(readerConfig, tableInfo, boundednessSettings, rowResultConverter);
+        return new KuduSource<>(
+                readerConfig, tableInfo, boundedness, discoveryInterval, rowResultConverter);
     }
 }

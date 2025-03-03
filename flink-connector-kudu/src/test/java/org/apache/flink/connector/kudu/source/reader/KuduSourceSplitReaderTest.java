@@ -20,13 +20,12 @@ package org.apache.flink.connector.kudu.source.reader;
 import org.apache.flink.connector.base.source.reader.RecordsWithSplitIds;
 import org.apache.flink.connector.base.source.reader.splitreader.SplitsAddition;
 import org.apache.flink.connector.kudu.source.KuduSourceTestBase;
-import org.apache.flink.connector.kudu.source.enumerator.KuduSplitGenerator;
 import org.apache.flink.connector.kudu.source.split.KuduSourceSplit;
+import org.apache.flink.connector.kudu.source.utils.KuduSplitGenerator;
 
 import org.apache.kudu.client.RowResult;
 import org.junit.jupiter.api.Test;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -37,30 +36,44 @@ import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 public class KuduSourceSplitReaderTest extends KuduSourceTestBase {
 
     private List<KuduSourceSplit> generateSplits() {
-        KuduSplitGenerator generator = new KuduSplitGenerator(getReaderConfig(), getTableInfo());
-        long now = getCurrentHybridTime();
-        return generator.generateFullScanSplits(now);
+        List<KuduSourceSplit> splits;
+
+        try (KuduSplitGenerator generator =
+                new KuduSplitGenerator(getReaderConfig(), getTableInfo())) {
+            long now = getCurrentHybridTime();
+            splits = generator.generateFullScanSplits(now);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to close KuduSplitGenerator", e);
+        }
+        return splits;
     }
 
     @Test
-    public void testBasicRecordFetching() throws IOException {
+    public void testBasicRecordFetching() {
         int recordsFetched = 0;
-        KuduSourceSplitReader splitReader = new KuduSourceSplitReader(getReaderConfig());
-        List<KuduSourceSplit> splits = generateSplits();
-        for (KuduSourceSplit split : splits) {
-            splitReader.handleSplitsChanges(
-                    new SplitsAddition<>(new ArrayList<>(Collections.singletonList(split))));
-            RecordsWithSplitIds<RowResult> fetchedRecordsWithSplitIds = splitReader.fetch();
-            assertThat(fetchedRecordsWithSplitIds.nextSplit()).isNotNull();
-            List<RowResult> records = new ArrayList<>();
-            RowResult nextRecordFromSplit = fetchedRecordsWithSplitIds.nextRecordFromSplit();
-            while (nextRecordFromSplit != null) {
-                records.add(nextRecordFromSplit);
-                nextRecordFromSplit = fetchedRecordsWithSplitIds.nextRecordFromSplit();
+
+        try (KuduSourceSplitReader splitReader = new KuduSourceSplitReader(getReaderConfig())) {
+            List<KuduSourceSplit> splits = generateSplits();
+            for (KuduSourceSplit split : splits) {
+                splitReader.handleSplitsChanges(
+                        new SplitsAddition<>(new ArrayList<>(Collections.singletonList(split))));
+                RecordsWithSplitIds<RowResult> fetchedRecordsWithSplitIds = splitReader.fetch();
+                assertThat(fetchedRecordsWithSplitIds.nextSplit()).isNotNull();
+
+                List<RowResult> records = new ArrayList<>();
+                RowResult nextRecordFromSplit = fetchedRecordsWithSplitIds.nextRecordFromSplit();
+                while (nextRecordFromSplit != null) {
+                    records.add(nextRecordFromSplit);
+                    nextRecordFromSplit = fetchedRecordsWithSplitIds.nextRecordFromSplit();
+                }
+
+                assertThat(records.size()).isGreaterThan(0);
+                recordsFetched += records.size();
             }
-            assertThat(records.size()).isGreaterThan(0);
-            recordsFetched += records.size();
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to close KuduSourceSplitReader", e);
         }
+
         assertThat(recordsFetched).isEqualTo(getTestRowsCount());
     }
 }
