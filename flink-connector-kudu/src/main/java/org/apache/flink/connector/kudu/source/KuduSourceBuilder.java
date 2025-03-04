@@ -35,7 +35,7 @@ public class KuduSourceBuilder<OUT> {
     private KuduReaderConfig readerConfig;
     private KuduTableInfo tableInfo;
     private Boundedness boundedness = Boundedness.BOUNDED;
-    private Duration discoveryInterval = null;
+    private Duration discoveryPeriod = null;
     private RowResultConverter<OUT> rowResultConverter;
 
     public KuduSourceBuilder<OUT> setTableInfo(KuduTableInfo tableInfo) {
@@ -59,8 +59,8 @@ public class KuduSourceBuilder<OUT> {
         return this;
     }
 
-    public KuduSourceBuilder<OUT> setDiscoveryInterval(Duration discoveryInterval) {
-        this.discoveryInterval = discoveryInterval;
+    public KuduSourceBuilder<OUT> setDiscoveryPeriod(Duration discoveryPeriod) {
+        this.discoveryPeriod = discoveryPeriod;
         return this;
     }
 
@@ -70,11 +70,11 @@ public class KuduSourceBuilder<OUT> {
         checkNotNull(rowResultConverter, "RowResultConverter must be provided.");
         if (boundedness == Boundedness.CONTINUOUS_UNBOUNDED) {
             checkNotNull(
-                    discoveryInterval,
-                    "Discovery interval must be provided for CONTINUOUS_UNBOUNDED mode.");
+                    discoveryPeriod,
+                    "Discovery period must be provided for CONTINUOUS_UNBOUNDED mode.");
         }
 
         return new KuduSource<>(
-                readerConfig, tableInfo, boundedness, discoveryInterval, rowResultConverter);
+                readerConfig, tableInfo, boundedness, discoveryPeriod, rowResultConverter);
     }
 }

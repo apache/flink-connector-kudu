@@ -70,7 +70,7 @@ public class KuduSource<OUT> implements Source<OUT, KuduSourceSplit, KuduSourceE
     private final KuduReaderConfig readerConfig;
     private final KuduTableInfo tableInfo;
     private final Boundedness boundedness;
-    private final Duration discoveryInterval;
+    private final Duration discoveryPeriod;
     private final RowResultConverter<OUT> rowResultConverter;
 
     private final Configuration configuration;
@@ -79,12 +79,12 @@ public class KuduSource<OUT> implements Source<OUT, KuduSourceSplit, KuduSourceE
             KuduReaderConfig readerConfig,
             KuduTableInfo tableInfo,
             Boundedness boundedness,
-            Duration discoveryInterval,
+            Duration discoveryPeriod,
             RowResultConverter<OUT> rowResultConverter) {
         this.tableInfo = tableInfo;
         this.readerConfig = readerConfig;
         this.boundedness = boundedness;
-        this.discoveryInterval = discoveryInterval;
+        this.discoveryPeriod = discoveryPeriod;
         this.rowResultConverter = rowResultConverter;
         this.configuration = new Configuration();
     }
@@ -98,7 +98,7 @@ public class KuduSource<OUT> implements Source<OUT, KuduSourceSplit, KuduSourceE
     public SplitEnumerator<KuduSourceSplit, KuduSourceEnumeratorState> createEnumerator(
             SplitEnumeratorContext<KuduSourceSplit> enumContext) {
         return new KuduSourceEnumerator(
-                tableInfo, readerConfig, boundedness, discoveryInterval, enumContext);
+                tableInfo, readerConfig, boundedness, discoveryPeriod, enumContext);
     }
 
     @Override
@@ -107,7 +107,7 @@ public class KuduSource<OUT> implements Source<OUT, KuduSourceSplit, KuduSourceE
             KuduSourceEnumeratorState checkpoint)
             throws Exception {
         return new KuduSourceEnumerator(
-                tableInfo, readerConfig, boundedness, discoveryInterval, enumContext, checkpoint);
+                tableInfo, readerConfig, boundedness, discoveryPeriod, enumContext, checkpoint);
     }
 
     @Override

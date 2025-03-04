@@ -76,6 +76,6 @@ public class KuduSourceTest {
 
         assertThatThrownBy(builder::build)
                 .isInstanceOf(NullPointerException.class)
-                .hasMessageContaining("Discovery interval");
+                .hasMessageContaining("Discovery period");
     }
 }

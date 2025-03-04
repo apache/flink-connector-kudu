@@ -51,18 +51,20 @@ public class KuduSourceITCase extends KuduSourceTestBase {
                             .setNumberTaskManagers(2)
                             .build());
 
+    public static StreamExecutionEnvironment env;
+
     private static Queue<Row> collectedRecords;
 
     @BeforeEach
     public void init() throws Exception {
         super.init();
+        env = StreamExecutionEnvironment.getExecutionEnvironment();
         collectedRecords = new ConcurrentLinkedDeque<>();
     }
 
     @Test
     public void testRecordsFromSourceUnbounded(@InjectClusterClient ClusterClient<?> client)
             throws Exception {
-        StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
 
         KuduSource<Row> kuduSource =
                 new KuduSourceBuilder<Row>()
@@ -70,7 +72,7 @@ public class KuduSourceITCase extends KuduSourceTestBase {
                         .setTableInfo(getTableInfo())
                         .setRowResultConverter(new RowResultRowConverter())
                         .setBoundedness(Boundedness.CONTINUOUS_UNBOUNDED)
-                        .setDiscoveryInterval(Duration.ofSeconds(1))
+                        .setDiscoveryPeriod(Duration.ofSeconds(1))
                         .build();
 
         env.fromSource(kuduSource, WatermarkStrategy.noWatermarks(), "KuduSource")
@@ -87,10 +89,7 @@ public class KuduSourceITCase extends KuduSourceTestBase {
     }
 
     @Test
-    public void testRecordsFromSourceBounded(@InjectClusterClient ClusterClient<?> client)
-            throws Exception {
-        StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
-        env.setParallelism(1);
+    public void testRecordsFromSourceBounded() throws Exception {
 
         KuduSource<Row> kuduSource =
                 new KuduSourceBuilder<Row>()
