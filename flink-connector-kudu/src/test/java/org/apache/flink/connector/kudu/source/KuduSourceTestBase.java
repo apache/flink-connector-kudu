@@ -32,13 +32,11 @@ import org.apache.kudu.client.KuduSession;
 import org.apache.kudu.client.KuduTable;
 import org.apache.kudu.client.PartialRow;
 import org.apache.kudu.client.SessionConfiguration;
-import org.apache.kudu.util.HybridTimeUtil;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.TimeUnit;
 
 /** A test base class for {@link KuduSource} related tests. */
 public class KuduSourceTestBase extends KuduTestBase {
@@ -124,11 +122,5 @@ public class KuduSourceTestBase extends KuduTestBase {
         if (session.countPendingErrors() != 0) {
             throw new RuntimeException("Error inserting rows to Kudu");
         }
-    }
-
-    // Helper method to get the current Hybrid Time
-    public long getCurrentHybridTime() {
-        long fromMicros = TimeUnit.MILLISECONDS.toMicros(System.currentTimeMillis());
-        return HybridTimeUtil.physicalAndLogicalToHTTimestamp(fromMicros, 0) + 1;
     }
 }

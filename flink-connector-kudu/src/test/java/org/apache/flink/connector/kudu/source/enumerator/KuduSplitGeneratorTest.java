@@ -21,6 +21,7 @@ import org.apache.flink.connector.kudu.connector.KuduTableInfo;
 import org.apache.flink.connector.kudu.connector.reader.KuduReaderConfig;
 import org.apache.flink.connector.kudu.source.KuduSourceTestBase;
 import org.apache.flink.connector.kudu.source.split.KuduSourceSplit;
+import org.apache.flink.connector.kudu.source.utils.KuduSourceUtils;
 import org.apache.flink.connector.kudu.source.utils.KuduSplitGenerator;
 
 import org.apache.kudu.client.KuduScanToken;
@@ -41,10 +42,10 @@ public class KuduSplitGeneratorTest extends KuduSourceTestBase {
     private final long currentHT;
 
     public KuduSplitGeneratorTest() throws Exception {
-        currentHT = getCurrentHybridTime();
-        startHT = getCurrentHybridTime();
+        currentHT = KuduSourceUtils.getCurrentHybridTime();
+        startHT = KuduSourceUtils.getCurrentHybridTime();
         Thread.sleep(1000);
-        endHT = getCurrentHybridTime();
+        endHT = KuduSourceUtils.getCurrentHybridTime();
     }
 
     @Test

@@ -21,6 +21,7 @@ import org.apache.flink.connector.base.source.reader.RecordsWithSplitIds;
 import org.apache.flink.connector.base.source.reader.splitreader.SplitsAddition;
 import org.apache.flink.connector.kudu.source.KuduSourceTestBase;
 import org.apache.flink.connector.kudu.source.split.KuduSourceSplit;
+import org.apache.flink.connector.kudu.source.utils.KuduSourceUtils;
 import org.apache.flink.connector.kudu.source.utils.KuduSplitGenerator;
 
 import org.apache.kudu.client.RowResult;
@@ -40,7 +41,7 @@ public class KuduSourceSplitReaderTest extends KuduSourceTestBase {
 
         try (KuduSplitGenerator generator =
                 new KuduSplitGenerator(getReaderConfig(), getTableInfo())) {
-            long now = getCurrentHybridTime();
+            long now = KuduSourceUtils.getCurrentHybridTime();
             splits = generator.generateFullScanSplits(now);
         } catch (Exception e) {
             throw new RuntimeException("Failed to close KuduSplitGenerator", e);

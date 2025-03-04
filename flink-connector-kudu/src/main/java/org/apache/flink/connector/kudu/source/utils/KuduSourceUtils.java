@@ -19,13 +19,16 @@ package org.apache.flink.connector.kudu.source.utils;
 
 import org.apache.flink.connector.kudu.source.split.KuduSourceSplit;
 
+import org.apache.kudu.util.HybridTimeUtil;
+
 import java.util.Collection;
 import java.util.Iterator;
+import java.util.concurrent.TimeUnit;
 
 /** Utility class for retrieving the next available Kudu source split. */
-public class KuduSplitRetriever {
+public class KuduSourceUtils {
 
-    private KuduSplitRetriever() {}
+    private KuduSourceUtils() {}
 
     /** Retrieves and removes the next available split from the given collection. */
     public static KuduSourceSplit getNextSplit(Collection<KuduSourceSplit> splits) {
@@ -36,5 +39,11 @@ public class KuduSplitRetriever {
         KuduSourceSplit next = iterator.next();
         iterator.remove();
         return next;
+    }
+
+    public static long getCurrentHybridTime() {
+        return HybridTimeUtil.clockTimestampToHTTimestamp(
+                        System.currentTimeMillis(), TimeUnit.MILLISECONDS)
+                + 1;
     }
 }

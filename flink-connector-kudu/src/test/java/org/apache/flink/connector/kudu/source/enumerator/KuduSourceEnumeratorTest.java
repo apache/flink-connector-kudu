@@ -25,13 +25,16 @@ import org.apache.flink.connector.kudu.source.split.KuduSourceSplit;
 import org.apache.flink.connector.testutils.source.reader.TestingSplitEnumeratorContext;
 
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
 
 /**
  * Unit tests for {@link KuduSourceEnumerator}.
@@ -47,10 +50,12 @@ public class KuduSourceEnumeratorTest {
 
     private TestingSplitEnumeratorContext<KuduSourceSplit> context;
     private KuduSourceSplit split;
-    private KuduSourceEnumerator enumerator;
     private final int subtaskId = 1;
     private final long checkpointId = 1L;
     private final String requesterHostname = "host";
+    private final KuduTableInfo tableInfo = KuduTableInfo.forTable("table");
+    private final KuduReaderConfig readerConfig =
+            KuduReaderConfig.Builder.setMasters("master").build();
 
     @BeforeEach
     void setup() {
@@ -59,9 +64,6 @@ public class KuduSourceEnumeratorTest {
 
     private KuduSourceEnumerator createEnumerator(
             SplitEnumeratorContext<KuduSourceSplit> context, Boundedness boundedness) {
-        KuduTableInfo tableInfo = KuduTableInfo.forTable("table");
-        KuduReaderConfig readerConfig = KuduReaderConfig.Builder.setMasters("master").build();
-
         byte[] token = {1, 2, 3, 4, 5};
         split = new KuduSourceSplit(token);
 
@@ -71,40 +73,66 @@ public class KuduSourceEnumeratorTest {
 
         KuduSourceEnumeratorState state = new KuduSourceEnumeratorState(1L, unassigned, pending);
 
-        return new KuduSourceEnumerator(tableInfo, readerConfig, boundedness, null, context, state);
+        return new KuduSourceEnumerator(
+                tableInfo, readerConfig, boundedness, Duration.ofSeconds(1), context, state);
     }
 
     @ParameterizedTest
     @EnumSource(Boundedness.class)
     void testCheckpointNoSplitRequested(Boundedness boundedness) throws Exception {
-        enumerator = createEnumerator(context, boundedness);
-        KuduSourceEnumeratorState state = enumerator.snapshotState(checkpointId);
-        assertThat(state.getUnassigned().size()).isEqualTo(1);
-        assertThat(state.getPending().size()).isEqualTo(0);
+        try (KuduSourceEnumerator enumerator = createEnumerator(context, boundedness)) {
+            KuduSourceEnumeratorState state = enumerator.snapshotState(checkpointId);
+            assertThat(state.getUnassigned().size()).isEqualTo(1);
+            assertThat(state.getPending().size()).isEqualTo(0);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to close KuduSourceEnumerator", e);
+        }
     }
 
     @ParameterizedTest
     @EnumSource(Boundedness.class)
     void testSplitRequestForRegisteredReader(Boundedness boundedness) throws Exception {
-        enumerator = createEnumerator(context, boundedness);
-        context.registerReader(subtaskId, requesterHostname);
-        enumerator.addReader(subtaskId);
-        enumerator.handleSplitRequest(subtaskId, requesterHostname);
-        assertThat(enumerator.snapshotState(checkpointId).getUnassigned().size()).isEqualTo(0);
-        assertThat(enumerator.snapshotState(checkpointId).getPending().size()).isEqualTo(1);
-        assertThat(context.getSplitAssignments().size()).isEqualTo(1);
-        assertThat(context.getSplitAssignments().get(subtaskId).getAssignedSplits())
-                .contains(split);
+        try (KuduSourceEnumerator enumerator = createEnumerator(context, boundedness)) {
+            context.registerReader(subtaskId, requesterHostname);
+            enumerator.addReader(subtaskId);
+            enumerator.handleSplitRequest(subtaskId, requesterHostname);
+            assertThat(enumerator.snapshotState(checkpointId).getUnassigned().size()).isEqualTo(0);
+            assertThat(enumerator.snapshotState(checkpointId).getPending().size()).isEqualTo(1);
+            assertThat(context.getSplitAssignments().size()).isEqualTo(1);
+            assertThat(context.getSplitAssignments().get(subtaskId).getAssignedSplits())
+                    .contains(split);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to close KuduSourceEnumerator", e);
+        }
     }
 
     @ParameterizedTest
     @EnumSource(Boundedness.class)
     void testSplitRequestForNonRegisteredReader(Boundedness boundedness) throws Exception {
-        enumerator = createEnumerator(context, boundedness);
-        enumerator.handleSplitRequest(subtaskId, requesterHostname);
-        assertThat(context.getSplitAssignments().size()).isEqualTo(0);
-        assertThat(enumerator.snapshotState(checkpointId).getUnassigned().size()).isEqualTo(1);
-        assertThat(enumerator.snapshotState(checkpointId).getUnassigned().get(0)).isEqualTo(split);
-        assertThat(enumerator.snapshotState(checkpointId).getPending().size()).isEqualTo(0);
+        try (KuduSourceEnumerator enumerator = createEnumerator(context, boundedness)) {
+            enumerator.handleSplitRequest(subtaskId, requesterHostname);
+            assertThat(context.getSplitAssignments().size()).isEqualTo(0);
+            assertThat(enumerator.snapshotState(checkpointId).getUnassigned().size()).isEqualTo(1);
+            assertThat(enumerator.snapshotState(checkpointId).getUnassigned().get(0))
+                    .isEqualTo(split);
+            assertThat(enumerator.snapshotState(checkpointId).getPending().size()).isEqualTo(0);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to close KuduSourceEnumerator", e);
+        }
+    }
+
+    @Test
+    public void testCreateEnumeratorWithWrongConfig() {
+        assertThatThrownBy(
+                        () ->
+                                new KuduSourceEnumerator(
+                                        tableInfo,
+                                        readerConfig,
+                                        Boundedness.CONTINUOUS_UNBOUNDED,
+                                        null,
+                                        context,
+                                        KuduSourceEnumeratorState.empty()))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("discoveryInterval must be set for CONTINUOUS_UNBOUNDED mode.");
     }
 }

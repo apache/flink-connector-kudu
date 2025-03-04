@@ -25,10 +25,9 @@ import org.apache.flink.connector.kudu.connector.KuduTableInfo;
 import org.apache.flink.connector.kudu.connector.reader.KuduReaderConfig;
 import org.apache.flink.connector.kudu.source.split.KuduSourceSplit;
 import org.apache.flink.connector.kudu.source.split.SplitFinishedEvent;
+import org.apache.flink.connector.kudu.source.utils.KuduSourceUtils;
 import org.apache.flink.connector.kudu.source.utils.KuduSplitGenerator;
-import org.apache.flink.connector.kudu.source.utils.KuduSplitRetriever;
 
-import org.apache.kudu.util.HybridTimeUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -39,8 +38,6 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Objects;
-import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 
 import static org.apache.flink.util.Preconditions.checkNotNull;
@@ -110,7 +107,7 @@ public class KuduSourceEnumerator
             Duration discoveryInterval,
             SplitEnumeratorContext<KuduSourceSplit> context,
             KuduSourceEnumeratorState enumState) {
-        this.boundedness = boundedness;
+        this.boundedness = checkNotNull(boundedness);
         this.discoveryInterval = discoveryInterval;
         this.context = checkNotNull(context);
         this.readersAwaitingSplit = new ArrayList<>();
@@ -118,17 +115,26 @@ public class KuduSourceEnumerator
         this.pending = enumState.getPending();
         this.splitGenerator = new KuduSplitGenerator(readerConfig, tableInfo);
         this.lastEndTimestamp = enumState.getLastEndTimestamp();
+
+        validateConfiguration();
+    }
+
+    private void validateConfiguration() {
+        if (boundedness == Boundedness.CONTINUOUS_UNBOUNDED && discoveryInterval == null) {
+            throw new IllegalArgumentException(
+                    "discoveryInterval must be set for CONTINUOUS_UNBOUNDED mode.");
+        }
     }
 
     @Override
     public void start() {
-        if (boundedness == Boundedness.CONTINUOUS_UNBOUNDED && Objects.nonNull(discoveryInterval)) {
+        if (boundedness == Boundedness.CONTINUOUS_UNBOUNDED) {
             context.callAsync(
                     () -> enumerateNewSplits(this::shouldEnumerateNewSplits),
                     this::assignSplits,
                     0,
                     discoveryInterval.toMillis());
-        } else if (boundedness.equals(Boundedness.BOUNDED)) {
+        } else if (boundedness == Boundedness.BOUNDED) {
             List<KuduSourceSplit> splits = enumerateNewSplits(this::shouldEnumerateNewSplits);
             assignSplits(splits, null);
         }
@@ -196,11 +202,11 @@ public class KuduSourceEnumerator
         List<KuduSourceSplit> newSplits;
 
         if (isFirstSplitGeneration()) {
-            lastEndTimestamp = getCurrentHybridTime();
+            lastEndTimestamp = KuduSourceUtils.getCurrentHybridTime();
             newSplits = splitGenerator.generateFullScanSplits(lastEndTimestamp);
         } else {
             long startHT = lastEndTimestamp;
-            long endHT = getCurrentHybridTime();
+            long endHT = KuduSourceUtils.getCurrentHybridTime();
             newSplits = splitGenerator.generateIncrementalSplits(startHT, endHT);
             lastEndTimestamp = endHT;
         }
@@ -233,25 +239,19 @@ public class KuduSourceEnumerator
                 continue;
             }
 
-            final KuduSourceSplit nextSplit = KuduSplitRetriever.getNextSplit(unassigned);
+            final KuduSourceSplit nextSplit = KuduSourceUtils.getNextSplit(unassigned);
             if (nextSplit != null) {
                 context.assignSplit(nextSplit, awaitingSubtask);
                 awaitingSubtasks.remove();
                 pending.add(nextSplit);
             } else {
-                if (boundedness.equals(Boundedness.BOUNDED)) {
+                if (boundedness == Boundedness.BOUNDED) {
                     awaitingSubtasks.remove();
                     context.signalNoMoreSplits(awaitingSubtask);
                 }
                 break;
             }
         }
-    }
-
-    // Helper method to get the current Hybrid Time
-    private long getCurrentHybridTime() {
-        long fromMicros = TimeUnit.MILLISECONDS.toMicros(System.currentTimeMillis());
-        return HybridTimeUtil.physicalAndLogicalToHTTimestamp(fromMicros, 0) + 1;
     }
 
     private Boolean shouldEnumerateNewSplits() {

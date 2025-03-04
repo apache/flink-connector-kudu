@@ -23,7 +23,7 @@ import org.apache.flink.connector.base.source.reader.splitreader.SplitReader;
 import org.apache.flink.connector.base.source.reader.splitreader.SplitsChange;
 import org.apache.flink.connector.kudu.connector.reader.KuduReaderConfig;
 import org.apache.flink.connector.kudu.source.split.KuduSourceSplit;
-import org.apache.flink.connector.kudu.source.utils.KuduSplitRetriever;
+import org.apache.flink.connector.kudu.source.utils.KuduSourceUtils;
 
 import org.apache.kudu.client.KuduClient;
 import org.apache.kudu.client.KuduScanToken;
@@ -54,7 +54,7 @@ public class KuduSourceSplitReader implements SplitReader<RowResult, KuduSourceS
     public RecordsWithSplitIds<RowResult> fetch() throws IOException {
         wakeUpFlag.compareAndSet(true, false);
 
-        final KuduSourceSplit currentSplit = KuduSplitRetriever.getNextSplit(splits);
+        final KuduSourceSplit currentSplit = KuduSourceUtils.getNextSplit(splits);
         if (currentSplit == null) {
             return new RecordsBySplits.Builder<RowResult>().build();
         }

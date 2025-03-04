@@ -103,6 +103,7 @@ public class KuduSplitGenerator implements AutoCloseable {
         }
     }
 
+    @Override
     public void close() throws Exception {
         kuduClient.close();
     }
