@@ -26,7 +26,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
-import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
+import static org.assertj.core.api.Assertions.assertThat;
 
 /** Tests for {@link KuduSourceEnumeratorStateSerializer}. */
 public class KuduSourceEnumeratorStateSerializerTest {
@@ -51,36 +51,20 @@ public class KuduSourceEnumeratorStateSerializerTest {
         KuduSourceEnumeratorState deserialized =
                 serializer.deserialize(serializer.getVersion(), serialized);
 
-        assertThat(state.getLastEndTimestamp()).isEqualTo(deserialized.getLastEndTimestamp());
-        assertThat(state.getUnassigned().size()).isEqualTo(deserialized.getUnassigned().size());
-        assertThat(state.getPending().size()).isEqualTo(deserialized.getPending().size());
+        assertThat(deserialized.getLastEndTimestamp()).isEqualTo(state.getLastEndTimestamp());
+        assertThat(deserialized.getUnassigned()).hasSameSizeAs(state.getUnassigned());
+        assertThat(deserialized.getPending()).hasSameSizeAs(state.getPending());
 
-        for (KuduSourceSplit split : unassigned) {
-            assertThat(split.getSerializedScanToken())
-                    .isEqualTo(
-                            deserialized.getUnassigned().stream()
-                                    .filter(
-                                            dSplit ->
-                                                    Arrays.equals(
-                                                            dSplit.getSerializedScanToken(),
-                                                            split.getSerializedScanToken()))
-                                    .findFirst()
-                                    .orElseThrow(() -> new AssertionError("Missing expected split"))
-                                    .getSerializedScanToken());
+        for (int i = 0; i < unassigned.size(); i++) {
+            byte[] expected = unassigned.get(i).getSerializedScanToken();
+            assertThat(deserialized.getUnassigned().get(i).getSerializedScanToken())
+                    .isEqualTo(expected);
         }
 
-        for (KuduSourceSplit split : pending) {
-            assertThat(split.getSerializedScanToken())
-                    .isEqualTo(
-                            deserialized.getPending().stream()
-                                    .filter(
-                                            dSplit ->
-                                                    Arrays.equals(
-                                                            dSplit.getSerializedScanToken(),
-                                                            split.getSerializedScanToken()))
-                                    .findFirst()
-                                    .orElseThrow(() -> new AssertionError("Missing expected split"))
-                                    .getSerializedScanToken());
+        for (int i = 0; i < pending.size(); i++) {
+            byte[] expected = pending.get(i).getSerializedScanToken();
+            assertThat(deserialized.getPending().get(i).getSerializedScanToken())
+                    .isEqualTo(expected);
         }
     }
 
@@ -95,7 +79,7 @@ public class KuduSourceEnumeratorStateSerializerTest {
                 serializer.deserialize(serializer.getVersion(), serialized);
 
         assertThat(state.getLastEndTimestamp()).isEqualTo(deserialized.getLastEndTimestamp());
-        assertThat(deserialized.getUnassigned().size()).isEqualTo(0);
-        assertThat(deserialized.getPending().size()).isEqualTo(0);
+        assertThat(deserialized.getUnassigned()).isEmpty();
+        assertThat(deserialized.getPending()).isEmpty();
     }
 }

@@ -40,7 +40,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.function.Supplier;
 
-import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
+import static org.assertj.core.api.Assertions.assertThat;
 
 /** IT cases for using Kudu Source. */
 public class KuduSourceITCase extends KuduSourceTestBase {
@@ -106,23 +106,16 @@ public class KuduSourceITCase extends KuduSourceTestBase {
         assertThat(collectedRecords.size()).isEqualTo(10);
     }
 
-    private static void sleep(long millis) {
-        try {
-            Thread.sleep(millis);
-        } catch (InterruptedException e) {
-            throw new RuntimeException(e);
-        }
-    }
-
     private static void waitExpectation(Supplier<Boolean> condition) throws Exception {
         CompletableFuture<Void> future =
                 CompletableFuture.runAsync(
                         () -> {
-                            while (true) {
-                                if (condition.get()) {
-                                    break;
+                            while (!condition.get()) {
+                                try {
+                                    Thread.sleep(50);
+                                } catch (InterruptedException e) {
+                                    throw new RuntimeException(e);
                                 }
-                                sleep(50);
                             }
                         });
         future.get();

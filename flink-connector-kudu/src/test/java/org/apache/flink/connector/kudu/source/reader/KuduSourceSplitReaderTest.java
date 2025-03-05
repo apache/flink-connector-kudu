@@ -31,7 +31,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
+import static org.assertj.core.api.Assertions.assertThat;
 
 /** Tests for {@link KuduSourceSplitReader}. */
 public class KuduSourceSplitReaderTest extends KuduSourceTestBase {
