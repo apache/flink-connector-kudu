@@ -19,9 +19,10 @@ package org.apache.flink.connector.kudu.source.split;
 
 import org.apache.flink.api.connector.source.SourceSplit;
 
+import org.apache.commons.codec.digest.DigestUtils;
+
 import java.io.Serializable;
 import java.util.Arrays;
-import java.util.Base64;
 
 /** The Kudu source split that wraps a Kudu scan token. */
 public class KuduSourceSplit implements SourceSplit, Serializable {
@@ -42,7 +43,7 @@ public class KuduSourceSplit implements SourceSplit, Serializable {
 
     @Override
     public String splitId() {
-        return Base64.getEncoder().encodeToString(serializedScanToken);
+        return DigestUtils.sha256Hex(serializedScanToken);
     }
 
     @Override

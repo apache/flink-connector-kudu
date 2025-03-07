@@ -92,6 +92,11 @@ under the License.
 			<scope>test</scope>
 		</dependency>
 
+		<dependency>
+			<groupId>commons-codec</groupId>
+			<artifactId>commons-codec</artifactId>
+		</dependency>
+
 		<!-- this is added because test cluster use @Rule from junit4 -->
 		<dependency>
 			<groupId>org.junit.jupiter</groupId>
