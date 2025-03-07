@@ -23,6 +23,7 @@ import org.apache.flink.connector.kudu.source.split.KuduSourceSplit;
 
 import org.apache.kudu.client.AsyncKuduScanner;
 import org.apache.kudu.client.KuduClient;
+import org.apache.kudu.client.KuduException;
 import org.apache.kudu.client.KuduScanToken;
 import org.apache.kudu.client.KuduTable;
 
@@ -36,9 +37,11 @@ import java.util.List;
 public class KuduSplitGenerator implements AutoCloseable {
     private final KuduTableInfo tableInfo;
     private final KuduClient kuduClient;
+    private final KuduReaderConfig readerConfig;
 
     public KuduSplitGenerator(KuduReaderConfig readerConfig, KuduTableInfo tableInfo) {
         this.tableInfo = tableInfo;
+        this.readerConfig = readerConfig;
         this.kuduClient = new KuduClient.KuduClientBuilder(readerConfig.getMasters()).build();
     }
 
@@ -48,14 +51,11 @@ public class KuduSplitGenerator implements AutoCloseable {
                     "Snapshot timestamp must be greater than 0, but was: " + snapshotTimestamp);
         }
         try {
-            KuduTable table = kuduClient.openTable(tableInfo.getName());
             List<KuduScanToken> tokens =
-                    kuduClient
-                            .newScanTokenBuilder(table)
+                    obtainScanTokenBuilder(tableInfo.getName())
                             .snapshotTimestampRaw(snapshotTimestamp)
                             .readMode(AsyncKuduScanner.ReadMode.READ_AT_SNAPSHOT)
                             .build();
-
             return serializeTokens(tokens);
         } catch (Exception e) {
             throw new RuntimeException("Error during full snapshot scan: " + e.getMessage(), e);
@@ -80,10 +80,8 @@ public class KuduSplitGenerator implements AutoCloseable {
         }
 
         try {
-            KuduTable table = kuduClient.openTable(tableInfo.getName());
             List<KuduScanToken> tokens =
-                    kuduClient.newScanTokenBuilder(table).diffScan(startHT, endHT).build();
-
+                    obtainScanTokenBuilder(tableInfo.getName()).diffScan(startHT, endHT).build();
             return serializeTokens(tokens);
         } catch (Exception e) {
             throw new RuntimeException("Error during incremental diff scan: " + e.getMessage(), e);
@@ -101,6 +99,20 @@ public class KuduSplitGenerator implements AutoCloseable {
             throw new RuntimeException(
                     "Error during source split serialization: " + e.getMessage(), e);
         }
+    }
+
+    private KuduScanToken.KuduScanTokenBuilder obtainScanTokenBuilder(String tableName)
+            throws KuduException {
+        KuduTable table = kuduClient.openTable(tableName);
+        return kuduClient
+                .newScanTokenBuilder(table)
+                .limit(readerConfig.getRowLimit())
+                .setSplitSizeBytes(readerConfig.getSplitSizeBytes())
+                .batchSizeBytes(readerConfig.getBatchSizeBytes())
+                .scanRequestTimeout(readerConfig.getScanRequestTimeout())
+                .prefetching(readerConfig.isPrefetching())
+                .keepAlivePeriodMs(readerConfig.getKeepAlivePeriodMs())
+                .replicaSelection(readerConfig.getReplicaSelection());
     }
 
     @Override
