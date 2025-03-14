@@ -27,6 +27,7 @@ import org.apache.flink.connector.kudu.source.split.KuduSourceSplit;
 import org.apache.flink.connector.kudu.source.split.SplitFinishedEvent;
 import org.apache.flink.connector.kudu.source.utils.KuduSourceUtils;
 import org.apache.flink.connector.kudu.source.utils.KuduSplitGenerator;
+import org.apache.flink.util.FlinkRuntimeException;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -38,7 +39,6 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
-import java.util.function.Supplier;
 
 import static org.apache.flink.util.Preconditions.checkNotNull;
 
@@ -130,13 +130,9 @@ public class KuduSourceEnumerator
     public void start() {
         if (boundedness == Boundedness.CONTINUOUS_UNBOUNDED) {
             context.callAsync(
-                    () -> enumerateNewSplits(this::shouldEnumerateNewSplits),
-                    this::assignSplits,
-                    0,
-                    discoveryInterval.toMillis());
+                    this::enumerateNewSplits, this::assignSplits, 0, discoveryInterval.toMillis());
         } else if (boundedness == Boundedness.BOUNDED) {
-            List<KuduSourceSplit> splits = enumerateNewSplits(this::shouldEnumerateNewSplits);
-            assignSplits(splits, null);
+            context.callAsync(this::enumerateNewSplits, this::assignSplits);
         }
     }
 
@@ -195,8 +191,8 @@ public class KuduSourceEnumerator
     // Outstanding meaning that there are no pending splits, and no enumerated but not assigned
     // splits for the
     // current period.
-    private List<KuduSourceSplit> enumerateNewSplits(Supplier<Boolean> shouldGenerate) {
-        if (!shouldGenerate.get()) {
+    private List<KuduSourceSplit> enumerateNewSplits() {
+        if (!shouldEnumerateNewSplits()) {
             return null;
         }
         List<KuduSourceSplit> newSplits;
@@ -216,8 +212,8 @@ public class KuduSourceEnumerator
 
     private void assignSplits(List<KuduSourceSplit> splits, Throwable error) {
         if (error != null) {
-            LOG.error("Failed to enumerate Kudu splits.", error);
-            return;
+            throw new FlinkRuntimeException(
+                    "Failed to enumerate Kudu splits, shutting down job.", error);
         }
 
         if (splits != null) {
