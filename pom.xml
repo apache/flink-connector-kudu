@@ -111,6 +111,12 @@ under the License.
 			<artifactId>log4j-1.2-api</artifactId>
 			<scope>test</scope>
 		</dependency>
+
+		<dependency>
+			<groupId>commons-codec</groupId>
+			<artifactId>commons-codec</artifactId>
+			<version>1.17.1</version>
+		</dependency>
 	</dependencies>
 
 	<!-- This section defines the module versions that are used if nothing else is specified. -->
@@ -119,6 +125,18 @@ under the License.
 			<dependency>
 				<groupId>org.apache.flink</groupId>
 				<artifactId>flink-clients</artifactId>
+				<version>${flink.version}</version>
+			</dependency>
+
+			<dependency>
+				<groupId>org.apache.flink</groupId>
+				<artifactId>flink-connector-base</artifactId>
+				<version>${flink.version}</version>
+			</dependency>
+
+			<dependency>
+				<groupId>org.apache.flink</groupId>
+				<artifactId>flink-connector-test-utils</artifactId>
 				<version>${flink.version}</version>
 			</dependency>
 
@@ -156,6 +174,20 @@ under the License.
 				<groupId>org.apache.flink</groupId>
 				<artifactId>flink-test-utils</artifactId>
 				<version>${flink.version}</version>
+				<exclusions>
+					<exclusion>
+						<groupId>org.apache.commons</groupId>
+						<artifactId>commons-compress</artifactId>
+					</exclusion>
+					<exclusion>
+						<groupId>org.xerial.snappy</groupId>
+						<artifactId>snappy-java</artifactId>
+					</exclusion>
+					<exclusion>
+						<groupId>org.apache.yetus</groupId>
+						<artifactId>audience-annotations</artifactId>
+					</exclusion>
+				</exclusions>
 			</dependency>
 
 			<!-- Flink ArchUnit -->
