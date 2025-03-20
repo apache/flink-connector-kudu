@@ -74,11 +74,11 @@ DataStream<Row> ds = tEnv.toDataStream(table);
 ### Kudu Source
 
 {{< hint info >}}
-This part describes the `KuduSource` usage, which is based on the new [data source]({{< ref "docs/dev/datastream/sources.md" >}}) API.
+This part describes the Kudu Source usage, which is based on the new [data source]({{< ref "docs/dev/datastream/sources.md" >}}) API.
 {{< /hint >}}
 
-The `KuduSource` provides a builder class that helps in the construction of the object.
-The below code snippet shows how to build a `KuduSource` to read data from an existing Kudu table.
+The Kudu Source provides a builder class that helps in the construction of the object.
+The below code snippet shows how to build a Kudu Source to read data from an existing Kudu table.
 The `KuduReaderConfig` class provides a way to configure Kudu-specific options that controls the read behavior. 
 
 ```java
@@ -98,18 +98,17 @@ env.fromSource(source, WatermarkStrategy.noWatermarks(), "Kudu Source");
 ```
 
 {{< hint info >}}
-It is also possible to create a non-existing Kudu table. To learn more about that, check the [Create Kudu table]({{< ref "docs/dev/connectors/datastream/kudu" >}}#create-kudu-table) section.
+It is also possible to create a non-existing Kudu table. To learn more about that, see the [Create Kudu table]({{< ref "docs/dev/connectors/datastream/kudu" >}}#create-kudu-table) section.
 {{< /hint >}}
 
 #### Boundedness
 
-Although Kudu is a bounded source, it can still be useful to run in a streaming manner, when the job does not stop until a failure, or if it is stopped/cancelled.
-By default `KuduSource` is running in bounded mode, but `.setBoundedness(Boundedness)` can trigger streaming mode if it is set to `CONTINUOUS_UNBOUNDED`.
+Although Kudu is a bounded source, it can still be useful to run in a streaming manner, when the job does not stop until a failure or if it is stopped/cancelled.
+By default `KuduSource` is running in bounded mode, but setting `.setBoundedness(Boundedness)` to `CONTINUOUS_UNBOUNDED` will trigger streaming mode.
 
-In `CONTINUOUS_UNBOUNDED` mode, the source follows a CDC-like behavior. This means at job start it will perform a snapshot of the source table and mark that snapshot time.
+In `CONTINUOUS_UNBOUNDED` mode, the source follows a CDC-like behavior. This means that at job start it will perform a snapshot of the source table and mark that snapshot time.
 From that point onward the source will perform differential scans periodically, so it will only process the changes made in that specific period.
-This period is controlled by the `.setDiscoveryPeriod(Duration)` property.
-The following example shows how to read a Kudu table in a streaming fashion and read updates in 1 minute periods. 
+The duration of this period is controlled by the `.setDiscoveryPeriod(Duration)` property. The following example shows how to read a Kudu table in a streaming fashion and read updates in 1 minute periods. 
 
 ```java
 KuduSource<Row> source =
@@ -167,7 +166,7 @@ ds.sinkTo(sink);
 ```
 
 {{< hint info >}}
-It is also possible to create a non-existing Kudu table. To learn more about that, check the [Create Kudu table]({{< ref "docs/dev/connectors/datastream/kudu" >}}#create-kudu-table) section.
+It is also possible to create a non-existing Kudu table. To learn more about that, see the [Create Kudu table]({{< ref "docs/dev/connectors/datastream/kudu" >}}#create-kudu-table) section.
 {{< /hint >}}
 
 ### Kudu Operation Mapping
@@ -195,7 +194,7 @@ There are pre-defined operation mappers for POJO, Flink `Row`, and Flink `Tuple`
 
 ## Create Kudu table
 
-If a table does not exist on the Kudu side, we can pass the desired schema and configuration to `KuduTableInfo` via `createTableIfNotExists(...)`.
+If a table does not exist on the Kudu side, you can pass the desired schema and configuration to `KuduTableInfo` via `createTableIfNotExists(...)`.
 This way either the source or the sink will try to create the table.
 
 ```java
