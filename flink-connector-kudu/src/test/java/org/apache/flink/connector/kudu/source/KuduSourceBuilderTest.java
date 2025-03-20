@@ -27,8 +27,8 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-/** Tests for {@link KuduSource}. */
-public class KuduSourceTest {
+/** Tests for {@link KuduSourceBuilder}. */
+public class KuduSourceBuilderTest {
     @Test
     void testNonExistentReaderConfig() {
         KuduSourceBuilder<Row> builder =

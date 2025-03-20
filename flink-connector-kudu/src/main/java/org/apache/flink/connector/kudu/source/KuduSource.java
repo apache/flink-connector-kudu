@@ -130,4 +130,8 @@ public class KuduSource<OUT> implements Source<OUT, KuduSourceSplit, KuduSourceE
                 readerContext,
                 rowResultConverter);
     }
+
+    public static <OUT> KuduSourceBuilder<OUT> builder() {
+        return new KuduSourceBuilder<>();
+    }
 }

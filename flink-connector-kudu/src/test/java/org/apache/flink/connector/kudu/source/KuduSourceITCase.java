@@ -67,7 +67,7 @@ public class KuduSourceITCase extends KuduSourceTestBase {
             throws Exception {
 
         KuduSource<Row> kuduSource =
-                new KuduSourceBuilder<Row>()
+                KuduSource.<Row>builder()
                         .setReaderConfig(getReaderConfig())
                         .setTableInfo(getTableInfo())
                         .setRowResultConverter(new RowResultRowConverter())
@@ -92,7 +92,7 @@ public class KuduSourceITCase extends KuduSourceTestBase {
     public void testRecordsFromSourceBounded() throws Exception {
 
         KuduSource<Row> kuduSource =
-                new KuduSourceBuilder<Row>()
+                KuduSource.<Row>builder()
                         .setReaderConfig(getReaderConfig())
                         .setTableInfo(getTableInfo())
                         .setRowResultConverter(new RowResultRowConverter())

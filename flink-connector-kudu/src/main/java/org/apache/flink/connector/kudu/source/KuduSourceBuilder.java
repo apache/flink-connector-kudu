@@ -34,9 +34,13 @@ import static org.apache.flink.util.Preconditions.checkNotNull;
 public class KuduSourceBuilder<OUT> {
     private KuduReaderConfig readerConfig;
     private KuduTableInfo tableInfo;
-    private Boundedness boundedness = Boundedness.BOUNDED;
-    private Duration discoveryPeriod = null;
+    private Boundedness boundedness;
+    private Duration discoveryPeriod;
     private RowResultConverter<OUT> rowResultConverter;
+
+    KuduSourceBuilder() {
+        boundedness = Boundedness.BOUNDED;
+    }
 
     public KuduSourceBuilder<OUT> setTableInfo(KuduTableInfo tableInfo) {
         this.tableInfo = tableInfo;
