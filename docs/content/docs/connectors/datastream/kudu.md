@@ -1,9 +1,7 @@
 ---
 title: Kudu
-weight: 4
+weight: 6
 type: docs
-aliases:
-- /dev/connectors/kudu.html
 ---
 <!--
 Licensed to the Apache Software Foundation (ASF) under one
@@ -98,7 +96,7 @@ env.fromSource(source, WatermarkStrategy.noWatermarks(), "Kudu Source");
 ```
 
 {{< hint info >}}
-It is also possible to create a non-existing Kudu table. To learn more about that, see the [Create Kudu table]({{< ref "docs/dev/connectors/datastream/kudu" >}}#create-kudu-table) section.
+It is also possible to create a non-existing Kudu table. To learn more about that, see the [Create Kudu table]({{< ref "docs/connectors/datastream/kudu" >}}#create-kudu-table) section.
 {{< /hint >}}
 
 #### Boundedness
@@ -166,7 +164,7 @@ ds.sinkTo(sink);
 ```
 
 {{< hint info >}}
-It is also possible to create a non-existing Kudu table. To learn more about that, see the [Create Kudu table]({{< ref "docs/dev/connectors/datastream/kudu" >}}#create-kudu-table) section.
+It is also possible to create a non-existing Kudu table. To learn more about that, see the [Create Kudu table]({{< ref "docs/connectors/datastream/kudu" >}}#create-kudu-table) section.
 {{< /hint >}}
 
 ### Kudu Operation Mapping
