@@ -1,9 +1,7 @@
 ---
 title: Kudu
-weight: 4
+weight: 6
 type: docs
-aliases:
-- /dev/table/connectors/kudu.html
 ---
 <!--
 Licensed to the Apache Software Foundation (ASF) under one
@@ -63,7 +61,7 @@ CREATE TABLE MyKuduTable (
 To also *create* a table in Kudu as well, the `hash-columns` options must be specified as a comma-delimited list.
 
 Other properties, such as range partitioning cannot be configured here.
-For more flexibility, please use `KuduCatalog#createTable` as described in [this]({{< ref "docs/dev/connectors/table/kudu" >}}#creating-a-kudu-table-directly-with-kuducatalog) section, or create the table directly in Kudu.
+For more flexibility, please use `KuduCatalog#createTable` as described in [this]({{< ref "docs/connectors/table/kudu" >}}#creating-a-kudu-table-directly-with-kuducatalog) section, or create the table directly in Kudu.
 
 The `NOT NULL` constraint can be added to any of the column definitions.
 
@@ -75,7 +73,7 @@ SQL and Table API
 The Kudu connector is fully integrated with the Flink Table and SQL APIs.
 Once we configure the Kudu catalog, we can start querying or inserting into existing Kudu tables using the Flink SQL or Table API.
 
-For more information about the possible queries, please check the relevant parts of the documentation [here]({{< ref "/docs/dev/table/sql/overview/" >}}).
+For more information about the possible queries, please check the relevant parts of the documentation [here]({{< ref "docs/dev/table/sql/overview" >}}).
 
 Kudu Catalog
 ------------
