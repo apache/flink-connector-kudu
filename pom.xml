@@ -61,7 +61,7 @@ under the License.
 		<mockito.version>1.10.19</mockito.version>
 		<testcontainers.version>1.17.6</testcontainers.version>
 
-		<log4j.version>2.23.1</log4j.version>
+		<log4j.version>2.25.3</log4j.version>
 		<slf4j.version>1.7.36</slf4j.version>
 
 		<!-- For directory plugin -->
