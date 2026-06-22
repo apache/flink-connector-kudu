@@ -35,7 +35,7 @@ class KuduRowInputFormatTest extends KuduTestBase {
 
     @Test
     void testInvalidKuduMaster() {
-        KuduTableInfo tableInfo = booksTableInfo("books", false);
+        KuduTableInfo tableInfo = uniqueBooksTableInfo(false);
         Assertions.assertThrows(
                 NullPointerException.class,
                 () -> new KuduRowInputFormat(null, new RowResultRowConverter(), tableInfo));
@@ -53,28 +53,34 @@ class KuduRowInputFormatTest extends KuduTestBase {
 
     @Test
     void testInputFormat() throws Exception {
-        KuduTableInfo tableInfo = booksTableInfo("books", true);
-        setUpDatabase(tableInfo);
+        KuduTableInfo tableInfo = uniqueBooksTableInfo(true);
+        try {
+            setUpDatabase(tableInfo);
 
-        List<Row> rows = readRows(tableInfo);
-        Assertions.assertEquals(5, rows.size());
+            List<Row> rows = readRows(tableInfo);
+            Assertions.assertEquals(5, rows.size());
 
-        cleanDatabase(tableInfo);
+        } finally {
+            cleanDatabase(tableInfo);
+        }
     }
 
     @Test
     void testInputFormatWithProjection() throws Exception {
-        KuduTableInfo tableInfo = booksTableInfo("books", true);
-        setUpDatabase(tableInfo);
+        KuduTableInfo tableInfo = uniqueBooksTableInfo(true);
+        try {
+            setUpDatabase(tableInfo);
 
-        List<Row> rows = readRows(tableInfo, "title", "id");
-        Assertions.assertEquals(5, rows.size());
+            List<Row> rows = readRows(tableInfo, "title", "id");
+            Assertions.assertEquals(5, rows.size());
 
-        for (Row row : rows) {
-            Assertions.assertEquals(2, row.getArity());
+            for (Row row : rows) {
+                Assertions.assertEquals(2, row.getArity());
+            }
+
+        } finally {
+            cleanDatabase(tableInfo);
         }
-
-        cleanDatabase(tableInfo);
     }
 
     private List<Row> readRows(KuduTableInfo tableInfo, String... fieldProjection)

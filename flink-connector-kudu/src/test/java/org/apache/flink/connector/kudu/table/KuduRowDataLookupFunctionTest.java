@@ -37,19 +37,20 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 /** Unit Tests for {@link KuduRowDataLookupFunction}. */
 public class KuduRowDataLookupFunctionTest extends KuduTestBase {
-    public static final String INPUT_TABLE = "books";
-    public static KuduTableInfo tableInfo;
+    private KuduTableInfo tableInfo;
 
     @BeforeEach
     public void init() {
-        tableInfo = booksTableInfo(INPUT_TABLE, true);
+        tableInfo = uniqueBooksTableInfo(true);
         setUpDatabase(tableInfo);
     }
 
     @AfterEach
     public void clean() {
-        KuduTableInfo tableInfo = booksTableInfo(INPUT_TABLE, true);
-        cleanDatabase(tableInfo);
+        if (tableInfo != null) {
+            cleanDatabase(tableInfo);
+            tableInfo = null;
+        }
     }
 
     @Test

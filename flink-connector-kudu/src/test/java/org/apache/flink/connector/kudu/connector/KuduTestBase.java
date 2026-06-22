@@ -58,6 +58,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 import static org.junit.Assert.assertFalse;
@@ -176,6 +177,14 @@ public class KuduTestBase {
         }
 
         return tableInfo;
+    }
+
+    protected static KuduTableInfo uniqueBooksTableInfo(boolean createIfNotExist) {
+        return booksTableInfo(uniqueTableName("books"), createIfNotExist);
+    }
+
+    private static String uniqueTableName(String prefix) {
+        return prefix + "_" + UUID.randomUUID().toString().replace("-", "");
     }
 
     public static List<Tuple5<Integer, String, String, Double, Integer>> booksDataTuple() {
