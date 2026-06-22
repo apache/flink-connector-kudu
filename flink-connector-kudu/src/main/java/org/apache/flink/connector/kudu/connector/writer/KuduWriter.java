@@ -130,7 +130,7 @@ public class KuduWriter<T> implements SinkWriter<T> {
         KuduSession session = client.newSession();
         session.setFlushMode(writerConfig.getFlushMode());
         session.setTimeoutMillis(writerConfig.getOperationTimeout());
-        session.setMutationBufferSpace(writerConfig.getMaxBufferSize());
+        session.setMutationBufferSpace(writerConfig.getMaxMutationBufferOps());
         session.setFlushInterval(writerConfig.getFlushInterval());
         session.setIgnoreAllDuplicateRows(writerConfig.isIgnoreDuplicate());
         session.setIgnoreAllNotFoundRows(writerConfig.isIgnoreNotFound());

@@ -47,7 +47,7 @@ import static org.apache.flink.connector.kudu.table.KuduDynamicTableOptions.HASH
 import static org.apache.flink.connector.kudu.table.KuduDynamicTableOptions.IDENTIFIER;
 import static org.apache.flink.connector.kudu.table.KuduDynamicTableOptions.IGNORE_DUPLICATE;
 import static org.apache.flink.connector.kudu.table.KuduDynamicTableOptions.IGNORE_NOT_FOUND;
-import static org.apache.flink.connector.kudu.table.KuduDynamicTableOptions.MAX_BUFFER_SIZE;
+import static org.apache.flink.connector.kudu.table.KuduDynamicTableOptions.MAX_MUTATION_BUFFER_OPS;
 import static org.apache.flink.connector.kudu.table.KuduDynamicTableOptions.OPERATION_TIMEOUT;
 import static org.apache.flink.connector.kudu.table.KuduDynamicTableOptions.REPLICAS;
 import static org.apache.flink.connector.kudu.table.KuduDynamicTableOptions.SCAN_ROW_SIZE;
@@ -77,7 +77,7 @@ public class KuduDynamicTableFactory implements DynamicTableSourceFactory, Dynam
                 HASH_PARTITIONS,
                 SCAN_ROW_SIZE,
                 REPLICAS,
-                MAX_BUFFER_SIZE,
+                MAX_MUTATION_BUFFER_OPS,
                 OPERATION_TIMEOUT,
                 FLUSH_MODE,
                 FLUSH_INTERVAL,
@@ -108,7 +108,7 @@ public class KuduDynamicTableFactory implements DynamicTableSourceFactory, Dynam
                         .setOperationTimeout(config.get(OPERATION_TIMEOUT).toMillis())
                         .setConsistency(config.get(FLUSH_MODE))
                         .setFlushInterval((int) config.get(FLUSH_INTERVAL).toMillis())
-                        .setMaxBufferSize(config.get(MAX_BUFFER_SIZE))
+                        .setMaxMutationBufferOps(config.get(MAX_MUTATION_BUFFER_OPS))
                         .setIgnoreNotFound(config.get(IGNORE_NOT_FOUND))
                         .setIgnoreDuplicate(config.get(IGNORE_DUPLICATE));
 

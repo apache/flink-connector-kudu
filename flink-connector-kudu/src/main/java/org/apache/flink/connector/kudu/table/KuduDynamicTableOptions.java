@@ -59,11 +59,23 @@ public class KuduDynamicTableOptions {
     // Sink options
     // -----------------------------------------------------------------------------------------
 
+    public static final ConfigOption<Integer> MAX_MUTATION_BUFFER_OPS =
+            ConfigOptions.key("sink.max-mutation-buffer-ops")
+                    .intType()
+                    .defaultValue(1000)
+                    .withDeprecatedKeys("sink.max-buffer-size")
+                    .withDescription("kudu's maximum number of buffered mutation operations");
+
+    /** @deprecated Use {@link #MAX_MUTATION_BUFFER_OPS} instead. */
+    @Deprecated
     public static final ConfigOption<Integer> MAX_BUFFER_SIZE =
             ConfigOptions.key("sink.max-buffer-size")
                     .intType()
                     .defaultValue(1000)
-                    .withDescription("kudu's max buffer size");
+                    .withDescription(
+                            "Deprecated. Use sink.max-mutation-buffer-ops instead."
+                                    + " This option configures kudu's maximum number of buffered"
+                                    + " mutation operations.");
 
     public static final ConfigOption<SessionConfiguration.FlushMode> FLUSH_MODE =
             ConfigOptions.key("sink.flush-mode")

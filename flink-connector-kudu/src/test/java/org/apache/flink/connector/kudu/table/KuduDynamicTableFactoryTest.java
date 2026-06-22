@@ -225,13 +225,13 @@ public class KuduDynamicTableFactoryTest extends KuduTestBase {
         properties.put("sink.ignore-duplicate", "true");
         properties.put("sink.flush-mode", "auto_flush_sync");
         properties.put("sink.flush-interval", "10000");
-        properties.put("sink.max-buffer-size", "10000");
+        properties.put("sink.max-mutation-buffer-ops", "10000");
 
         KuduWriterConfig.Builder builder =
                 KuduWriterConfig.Builder.setMasters(kuduMasters)
                         .setConsistency(SessionConfiguration.FlushMode.AUTO_FLUSH_SYNC)
                         .setFlushInterval(10000)
-                        .setMaxBufferSize(10000)
+                        .setMaxMutationBufferOps(10000)
                         .setIgnoreDuplicate(true)
                         .setIgnoreNotFound(true);
         KuduTableInfo kuduTableInfo = KuduTableInfo.forTable("TestTable12");

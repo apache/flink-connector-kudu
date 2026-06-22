@@ -69,7 +69,7 @@ public class KuduDynamicSinkTest extends KuduTestBase {
                         + "',"
                         + "  'table-name'='"
                         + INPUT_TABLE
-                        + "','sink.max-buffer-size'='1024"
+                        + "','sink.max-mutation-buffer-ops'='1024"
                         + "','sink.flush-interval'='1000ms"
                         + "','sink.operation-timeout'='500ms"
                         + "','sink.ignore-not-found'='true"

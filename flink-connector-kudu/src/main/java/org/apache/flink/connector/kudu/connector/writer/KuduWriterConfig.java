@@ -40,7 +40,7 @@ public class KuduWriterConfig implements Serializable {
     private final String masters;
     private final FlushMode flushMode;
     private final long operationTimeout;
-    private final int maxBufferSize;
+    private final int maxMutationBufferOps;
     private final int flushInterval;
     private final boolean ignoreNotFound;
     private final boolean ignoreDuplicate;
@@ -49,7 +49,7 @@ public class KuduWriterConfig implements Serializable {
             String masters,
             FlushMode flushMode,
             long operationTimeout,
-            int maxBufferSize,
+            int maxMutationBufferOps,
             int flushInterval,
             boolean ignoreNotFound,
             boolean ignoreDuplicate) {
@@ -57,7 +57,7 @@ public class KuduWriterConfig implements Serializable {
         this.masters = checkNotNull(masters, "Kudu masters cannot be null");
         this.flushMode = checkNotNull(flushMode, "Kudu flush mode cannot be null");
         this.operationTimeout = operationTimeout;
-        this.maxBufferSize = maxBufferSize;
+        this.maxMutationBufferOps = maxMutationBufferOps;
         this.flushInterval = flushInterval;
         this.ignoreNotFound = ignoreNotFound;
         this.ignoreDuplicate = ignoreDuplicate;
@@ -75,8 +75,14 @@ public class KuduWriterConfig implements Serializable {
         return operationTimeout;
     }
 
+    public int getMaxMutationBufferOps() {
+        return maxMutationBufferOps;
+    }
+
+    /** @deprecated Use {@link #getMaxMutationBufferOps()} instead. */
+    @Deprecated
     public int getMaxBufferSize() {
-        return maxBufferSize;
+        return getMaxMutationBufferOps();
     }
 
     public int getFlushInterval() {
@@ -106,7 +112,7 @@ public class KuduWriterConfig implements Serializable {
         // Reference from AsyncKuduClientBuilder defaultOperationTimeoutMs.
         private long timeout = AsyncKuduClient.DEFAULT_OPERATION_TIMEOUT_MS;
         // Reference from AsyncKuduSession mutationBufferMaxOps 1000.
-        private int maxBufferSize = 1000;
+        private int maxMutationBufferOps = 1000;
         // Reference from AsyncKuduSession flushIntervalMillis 1000.
         private int flushInterval = 1000;
         // Reference from AsyncKuduSession ignoreAllNotFoundRows false.
@@ -135,9 +141,15 @@ public class KuduWriterConfig implements Serializable {
             return setConsistency(FlushMode.AUTO_FLUSH_SYNC);
         }
 
-        public Builder setMaxBufferSize(int maxBufferSize) {
-            this.maxBufferSize = maxBufferSize;
+        public Builder setMaxMutationBufferOps(int maxMutationBufferOps) {
+            this.maxMutationBufferOps = maxMutationBufferOps;
             return this;
+        }
+
+        /** @deprecated Use {@link #setMaxMutationBufferOps(int)} instead. */
+        @Deprecated
+        public Builder setMaxBufferSize(int maxBufferSize) {
+            return setMaxMutationBufferOps(maxBufferSize);
         }
 
         public Builder setFlushInterval(int flushInterval) {
@@ -165,7 +177,7 @@ public class KuduWriterConfig implements Serializable {
                     masters,
                     flushMode,
                     timeout,
-                    maxBufferSize,
+                    maxMutationBufferOps,
                     flushInterval,
                     ignoreNotFound,
                     ignoreDuplicate);
@@ -178,7 +190,7 @@ public class KuduWriterConfig implements Serializable {
                             masters,
                             flushMode,
                             timeout,
-                            maxBufferSize,
+                            maxMutationBufferOps,
                             flushInterval,
                             ignoreNotFound,
                             ignoreDuplicate);
@@ -197,7 +209,7 @@ public class KuduWriterConfig implements Serializable {
             return Objects.equals(masters, that.masters)
                     && Objects.equals(flushMode, that.flushMode)
                     && Objects.equals(timeout, that.timeout)
-                    && Objects.equals(maxBufferSize, that.maxBufferSize)
+                    && Objects.equals(maxMutationBufferOps, that.maxMutationBufferOps)
                     && Objects.equals(flushInterval, that.flushInterval)
                     && Objects.equals(ignoreNotFound, that.ignoreNotFound)
                     && Objects.equals(ignoreDuplicate, that.ignoreDuplicate);
