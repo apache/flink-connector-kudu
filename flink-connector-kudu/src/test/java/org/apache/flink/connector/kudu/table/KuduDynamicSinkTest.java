@@ -33,13 +33,13 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 /** Unit Tests for {@link org.apache.flink.connector.kudu.table.KuduDynamicTableSink}. */
 public class KuduDynamicSinkTest extends KuduTestBase {
-    public static final String INPUT_TABLE = "books";
-    public static StreamExecutionEnvironment env;
-    public static TableEnvironment tEnv;
+    private StreamExecutionEnvironment env;
+    private TableEnvironment tEnv;
+    private KuduTableInfo tableInfo;
 
     @BeforeEach
     public void init() {
-        KuduTableInfo tableInfo = booksTableInfo(INPUT_TABLE, true);
+        tableInfo = uniqueBooksTableInfo(true);
         setUpDatabase(tableInfo);
         env = StreamExecutionEnvironment.getExecutionEnvironment();
         tEnv = StreamTableEnvironment.create(env);
@@ -47,15 +47,17 @@ public class KuduDynamicSinkTest extends KuduTestBase {
 
     @AfterEach
     public void clean() {
-        KuduTableInfo tableInfo = booksTableInfo(INPUT_TABLE, true);
-        cleanDatabase(tableInfo);
+        if (tableInfo != null) {
+            cleanDatabase(tableInfo);
+            tableInfo = null;
+        }
     }
 
     @Test
     public void testKuduSink() {
         String createSql =
                 "CREATE TABLE "
-                        + INPUT_TABLE
+                        + tableInfo.getName()
                         + "("
                         + "id int PRIMARY KEY NOT ENFORCED,"
                         + "title string,"
@@ -68,7 +70,7 @@ public class KuduDynamicSinkTest extends KuduTestBase {
                         + 123245
                         + "',"
                         + "  'table-name'='"
-                        + INPUT_TABLE
+                        + tableInfo.getName()
                         + "','sink.max-buffer-size'='1024"
                         + "','sink.flush-interval'='1000ms"
                         + "','sink.operation-timeout'='500ms"
@@ -77,9 +79,12 @@ public class KuduDynamicSinkTest extends KuduTestBase {
                         + ")";
         tEnv.executeSql(createSql);
         tEnv.executeSql(
-                "insert into " + INPUT_TABLE + " values(1006,'test title','test author',10.1,10)");
+                "insert into "
+                        + tableInfo.getName()
+                        + " values(1006,'test title','test author',10.1,10)");
         CloseableIterator<Row> collected =
-                tEnv.executeSql("select * from " + INPUT_TABLE + " where id =1006").collect();
+                tEnv.executeSql("select * from " + tableInfo.getName() + " where id =1006")
+                        .collect();
         assertNotNull(collected);
     }
 }

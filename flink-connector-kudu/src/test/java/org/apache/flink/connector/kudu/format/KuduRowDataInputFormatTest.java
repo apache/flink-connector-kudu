@@ -38,7 +38,7 @@ class KuduRowDataInputFormatTest extends KuduTestBase {
 
     @Test
     void testInvalidKuduMaster() {
-        KuduTableInfo tableInfo = booksTableInfo("books", false);
+        KuduTableInfo tableInfo = uniqueBooksTableInfo(false);
         Assertions.assertThrows(
                 NullPointerException.class,
                 () -> new KuduRowDataInputFormat(null, new RowResultRowDataConverter(), tableInfo));
@@ -58,28 +58,34 @@ class KuduRowDataInputFormatTest extends KuduTestBase {
 
     @Test
     void testInputFormat() throws Exception {
-        KuduTableInfo tableInfo = booksTableInfo("books", true);
-        setUpDatabase(tableInfo);
+        KuduTableInfo tableInfo = uniqueBooksTableInfo(true);
+        try {
+            setUpDatabase(tableInfo);
 
-        List<RowData> rows = readRowDatas(tableInfo);
-        Assertions.assertEquals(5, rows.size());
+            List<RowData> rows = readRowDatas(tableInfo);
+            Assertions.assertEquals(5, rows.size());
 
-        cleanDatabase(tableInfo);
+        } finally {
+            cleanDatabase(tableInfo);
+        }
     }
 
     @Test
     void testInputFormatWithProjection() throws Exception {
-        KuduTableInfo tableInfo = booksTableInfo("books", true);
-        setUpDatabase(tableInfo);
+        KuduTableInfo tableInfo = uniqueBooksTableInfo(true);
+        try {
+            setUpDatabase(tableInfo);
 
-        List<RowData> rows = readRowDatas(tableInfo, "title", "id");
-        Assertions.assertEquals(5, rows.size());
+            List<RowData> rows = readRowDatas(tableInfo, "title", "id");
+            Assertions.assertEquals(5, rows.size());
 
-        for (RowData row : rows) {
-            Assertions.assertEquals(2, row.getArity());
+            for (RowData row : rows) {
+                Assertions.assertEquals(2, row.getArity());
+            }
+
+        } finally {
+            cleanDatabase(tableInfo);
         }
-
-        cleanDatabase(tableInfo);
     }
 
     private List<RowData> readRowDatas(KuduTableInfo tableInfo, String... fieldProjection)

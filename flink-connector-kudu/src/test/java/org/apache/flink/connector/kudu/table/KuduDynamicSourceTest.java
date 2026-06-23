@@ -39,13 +39,13 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 /** Unit Tests for {@link org.apache.flink.connector.kudu.table.KuduDynamicTableSource}. */
 public class KuduDynamicSourceTest extends KuduTestBase {
-    public static final String INPUT_TABLE = "books";
-    public static StreamExecutionEnvironment env;
-    public static TableEnvironment tEnv;
+    private StreamExecutionEnvironment env;
+    private TableEnvironment tEnv;
+    private KuduTableInfo tableInfo;
 
     @BeforeEach
     public void init() {
-        KuduTableInfo tableInfo = booksTableInfo(INPUT_TABLE, true);
+        tableInfo = uniqueBooksTableInfo(true);
         setUpDatabase(tableInfo);
         env = StreamExecutionEnvironment.getExecutionEnvironment();
         tEnv = StreamTableEnvironment.create(env);
@@ -53,8 +53,10 @@ public class KuduDynamicSourceTest extends KuduTestBase {
 
     @AfterEach
     public void clean() {
-        KuduTableInfo tableInfo = booksTableInfo(INPUT_TABLE, true);
-        cleanDatabase(tableInfo);
+        if (tableInfo != null) {
+            cleanDatabase(tableInfo);
+            tableInfo = null;
+        }
     }
 
     @Test
@@ -62,7 +64,7 @@ public class KuduDynamicSourceTest extends KuduTestBase {
         // "id", "title", "author", "price", "quantity"
         tEnv.executeSql(
                 "CREATE TABLE "
-                        + INPUT_TABLE
+                        + tableInfo.getName()
                         + "("
                         + "id int PRIMARY KEY NOT ENFORCED,"
                         + "title string,"
@@ -75,12 +77,12 @@ public class KuduDynamicSourceTest extends KuduTestBase {
                         + getMasterAddress()
                         + "',"
                         + "  'table-name'='"
-                        + INPUT_TABLE
+                        + tableInfo.getName()
                         + "',"
                         + "'scan.row-size'='10'"
                         + ")");
 
-        Iterator<Row> collected = tEnv.executeSql("SELECT * FROM " + INPUT_TABLE).collect();
+        Iterator<Row> collected = tEnv.executeSql("SELECT * FROM " + tableInfo.getName()).collect();
         assertNotNull(collected);
     }
 
@@ -88,7 +90,7 @@ public class KuduDynamicSourceTest extends KuduTestBase {
     public void testProject() throws Exception {
         tEnv.executeSql(
                 "CREATE TABLE "
-                        + INPUT_TABLE
+                        + tableInfo.getName()
                         + "("
                         + "id int PRIMARY KEY NOT ENFORCED,"
                         + "title string,"
@@ -101,13 +103,13 @@ public class KuduDynamicSourceTest extends KuduTestBase {
                         + getMasterAddress()
                         + "',"
                         + "  'table-name'='"
-                        + INPUT_TABLE
+                        + tableInfo.getName()
                         + "',"
                         + "'scan.row-size'='10'"
                         + ")");
 
         Iterator<Row> collected =
-                tEnv.executeSql("SELECT id,title,author FROM " + INPUT_TABLE).collect();
+                tEnv.executeSql("SELECT id,title,author FROM " + tableInfo.getName()).collect();
         assertNotNull(collected);
         List<String> result =
                 CollectionUtil.iteratorToList(collected).stream()
@@ -130,7 +132,7 @@ public class KuduDynamicSourceTest extends KuduTestBase {
     public void testLimit() throws Exception {
         tEnv.executeSql(
                 "CREATE TABLE "
-                        + INPUT_TABLE
+                        + tableInfo.getName()
                         + "("
                         + "id int PRIMARY KEY NOT ENFORCED,"
                         + "title string,"
@@ -143,13 +145,13 @@ public class KuduDynamicSourceTest extends KuduTestBase {
                         + getMasterAddress()
                         + "',"
                         + "  'table-name'='"
-                        + INPUT_TABLE
+                        + tableInfo.getName()
                         + "',"
                         + "'scan.row-size'='10'"
                         + ")");
 
         Iterator<Row> collected =
-                tEnv.executeSql("SELECT * FROM " + INPUT_TABLE + " LIMIT 1").collect();
+                tEnv.executeSql("SELECT * FROM " + tableInfo.getName() + " LIMIT 1").collect();
         List<String> result =
                 CollectionUtil.iteratorToList(collected).stream()
                         .map(Row::toString)
@@ -162,7 +164,7 @@ public class KuduDynamicSourceTest extends KuduTestBase {
     public void testLookupJoin() {
         tEnv.executeSql(
                 "CREATE TABLE "
-                        + INPUT_TABLE
+                        + tableInfo.getName()
                         + "("
                         + "id int PRIMARY KEY NOT ENFORCED,"
                         + "title string,"
@@ -175,7 +177,7 @@ public class KuduDynamicSourceTest extends KuduTestBase {
                         + getMasterAddress()
                         + "',"
                         + "  'table-name'='"
-                        + INPUT_TABLE
+                        + tableInfo.getName()
                         + "',"
                         + "'scan.row-size'='10'"
                         + ")");
@@ -201,7 +203,7 @@ public class KuduDynamicSourceTest extends KuduTestBase {
                 tEnv.executeSql(
                                 "SELECT d.id, isbn, title FROM datagen as d"
                                         + " JOIN "
-                                        + INPUT_TABLE
+                                        + tableInfo.getName()
                                         + " FOR SYSTEM_TIME AS OF d.proctime AS k"
                                         + " ON d.id=k.id"
                                         + " WHERE k.title='Java for dummies'")
