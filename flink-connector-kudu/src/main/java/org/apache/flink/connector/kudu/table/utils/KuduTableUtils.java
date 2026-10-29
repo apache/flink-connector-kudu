@@ -74,7 +74,10 @@ public class KuduTableUtils {
                         .collect(Collectors.toList());
 
         List<String> primaryKeyCols = schema.getPrimaryKey().get().getColumns();
-        ColumnSchemasFactory schemasFactory = () -> toKuduConnectorColumns(columns, primaryKeyCols);
+        // Named classes instead of lambdas: the shaded SQL jar relocates org.apache.kudu, which
+        // breaks deserialization of serializable lambdas whose signatures reference Kudu types.
+        ColumnSchemasFactory schemasFactory =
+                new FlinkColumnSchemasFactory(columns, primaryKeyCols);
         int replicas =
                 Optional.ofNullable(props.get(REPLICAS.key()))
                         .map(Integer::parseInt)
@@ -85,14 +88,56 @@ public class KuduTableUtils {
                         .map(Integer::parseInt)
                         .orElse(HASH_PARTITIONS.defaultValue());
         CreateTableOptionsFactory optionsFactory =
-                () ->
-                        new CreateTableOptions()
-                                .setNumReplicas(replicas)
-                                .addHashPartitions(hashCols, hashPartitions);
+                new HashPartitionedTableOptionsFactory(replicas, hashCols, hashPartitions);
 
         tableInfo.createTableIfNotExists(schemasFactory, optionsFactory);
 
         return tableInfo;
+    }
+
+    /** {@link ColumnSchemasFactory} that derives the Kudu columns from a Flink table schema. */
+    private static final class FlinkColumnSchemasFactory implements ColumnSchemasFactory {
+
+        private static final long serialVersionUID = 1L;
+
+        private final List<Tuple2<String, DataType>> columns;
+        private final List<String> primaryKeyCols;
+
+        private FlinkColumnSchemasFactory(
+                List<Tuple2<String, DataType>> columns, List<String> primaryKeyCols) {
+            this.columns = new ArrayList<>(columns);
+            this.primaryKeyCols = new ArrayList<>(primaryKeyCols);
+        }
+
+        @Override
+        public List<ColumnSchema> getColumnSchemas() {
+            return toKuduConnectorColumns(columns, primaryKeyCols);
+        }
+    }
+
+    /** {@link CreateTableOptionsFactory} for a hash-partitioned table. */
+    private static final class HashPartitionedTableOptionsFactory
+            implements CreateTableOptionsFactory {
+
+        private static final long serialVersionUID = 1L;
+
+        private final int replicas;
+        private final List<String> hashCols;
+        private final int hashPartitions;
+
+        private HashPartitionedTableOptionsFactory(
+                int replicas, List<String> hashCols, int hashPartitions) {
+            this.replicas = replicas;
+            this.hashCols = new ArrayList<>(hashCols);
+            this.hashPartitions = hashPartitions;
+        }
+
+        @Override
+        public CreateTableOptions getCreateTableOptions() {
+            return new CreateTableOptions()
+                    .setNumReplicas(replicas)
+                    .addHashPartitions(hashCols, hashPartitions);
+        }
     }
 
     public static List<ColumnSchema> toKuduConnectorColumns(
